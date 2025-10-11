@@ -69,6 +69,7 @@ jobs:
             --target x86_64 \
             --define "_version $VERSION" \
             --define "_topdir $HOME/rpmbuild" \
+            --define "_unitdir /usr/lib/systemd/system" \
             ~/rpmbuild/SPECS/mockzure.spec
 
       - name: Find built RPM

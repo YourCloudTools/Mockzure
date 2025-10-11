@@ -69,6 +69,7 @@ rpmbuild -bb \
     --target x86_64 \
     --define "_version $VERSION" \
     --define "_topdir $RPMBUILD_DIR" \
+    --define "_unitdir /usr/lib/systemd/system" \
     "$RPMBUILD_DIR/SPECS/mockzure.spec"
 
 # Copy built RPM to deploy/rpm directory
