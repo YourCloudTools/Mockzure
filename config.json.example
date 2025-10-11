@@ -1,0 +1,18 @@
+{
+  "serviceAccounts": [
+    {
+      "applicationId": "your-app-id-here",
+      "secret": "your-secret-key-here",
+      "displayName": "Your Service Account",
+      "description": "Description of your service account",
+      "graphPermissions": ["User.Read.All"]
+    },
+    {
+      "applicationId": "another-app-id",
+      "secret": "another-secret-key",
+      "displayName": "Another Service Account",
+      "description": "Another service account for testing"
+    }
+  ]
+}
+

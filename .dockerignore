@@ -1,0 +1,8 @@
+# Ignore development files
+*.md
+*.txt
+bin/
+logs/
+mockzure
+config.json
+

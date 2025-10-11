@@ -1,0 +1,11 @@
+.DS_Store
+
+# Sensitive configuration files
+config.json
+
+# Build artifacts
+mockzure
+
+# Data and logs
+data/
+logs/
