@@ -47,16 +47,6 @@ Edit `config.json` to add your service account credentials. The config file cont
 
 **Note:** `config.json` is excluded from version control for security. Never commit actual secrets to the repository.
 
-### Build and Run
-
-```bash
-cd Mockzure
-go build -o mockzure main.go
-./mockzure
-```
-
-Mockzure will start on **http://localhost:8090**
-
 ### Using the Web Portal
 
 Open your browser and navigate to:
@@ -68,6 +58,74 @@ You'll see three tabs:
 - **Resource Groups**: Manage VMs by resource group
 - **Entra ID**: View users and app registrations
 - **Settings**: Statistics and data management
+
+## Installation
+
+### RPM Package (RHEL/Azure Linux/Fedora)
+
+Mockzure is available as an RPM package through our GitHub Pages repository.
+
+#### Add Repository
+
+```bash
+# Create repository configuration
+sudo tee /etc/yum.repos.d/mockzure.repo << 'EOF'
+[mockzure]
+name=Mockzure RPM Repository
+baseurl=https://yourcloudtools.github.io/Mockzure/rpms
+enabled=1
+gpgcheck=0
+EOF
+```
+
+#### Install Package
+
+```bash
+# Install latest version
+sudo dnf install mockzure
+
+# Or install specific version
+sudo dnf install mockzure-20241011.143055
+
+# Or download and install directly
+curl -LO https://yourcloudtools.github.io/Mockzure/rpms/mockzure-latest.rpm
+sudo dnf install -y mockzure-latest.rpm
+```
+
+#### Post-Installation
+
+```bash
+# Configure the service (optional)
+sudo nano /etc/mockzure/config.json
+
+# Enable and start the service
+sudo systemctl enable mockzure
+sudo systemctl start mockzure
+
+# Check status
+sudo systemctl status mockzure
+
+# View logs
+sudo journalctl -u mockzure -f
+```
+
+The RPM package installs:
+- Binary: `/usr/bin/mockzure`
+- Configuration: `/etc/mockzure/config.json`
+- Systemd service: `/etc/systemd/system/mockzure.service`
+- Data directory: `/var/lib/mockzure/`
+
+Browse available packages at: **https://yourcloudtools.github.io/Mockzure/**
+
+### Manual Build
+
+For development or other platforms, build from source:
+
+```bash
+cd Mockzure
+go build -o mockzure main.go
+./mockzure
+```
 
 ## API Endpoints
 

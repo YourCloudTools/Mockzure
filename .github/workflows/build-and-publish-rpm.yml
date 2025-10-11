@@ -1,0 +1,456 @@
+name: Build and Publish RPM
+
+on:
+  push:
+    tags:
+      - 'v*'
+  release:
+    types: [created]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-rpm:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Install RPM build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm
+
+      - name: Determine version
+        id: version
+        run: |
+          # Always use timestamp-based versioning
+          VERSION=$(date +%Y%m%d.%H%M%S)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Set up RPM build environment
+        run: |
+          mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+
+      - name: Create source tarball
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          TEMP_DIR=$(mktemp -d)
+          SRC_DIR="$TEMP_DIR/mockzure-${VERSION}"
+          mkdir -p "$SRC_DIR"
+          
+          # Copy source files
+          cp main.go go.mod config.json.example "$SRC_DIR/"
+          mkdir -p "$SRC_DIR/deploy/systemd"
+          cp deploy/systemd/mockzure.service "$SRC_DIR/deploy/systemd/"
+          
+          # Create tarball
+          cd "$TEMP_DIR"
+          tar -czf ~/rpmbuild/SOURCES/mockzure-${VERSION}.tar.gz "mockzure-${VERSION}"
+          rm -rf "$TEMP_DIR"
+
+      - name: Build RPM package
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          cp deploy/rpm/mockzure.spec ~/rpmbuild/SPECS/
+          
+          rpmbuild -bb \
+            --target x86_64 \
+            --define "_version $VERSION" \
+            --define "_topdir $HOME/rpmbuild" \
+            ~/rpmbuild/SPECS/mockzure.spec
+
+      - name: Find built RPM
+        id: rpm
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          RPM_FILE=$(find ~/rpmbuild/RPMS/x86_64 -name "mockzure-${VERSION}*.rpm" | head -n 1)
+          RPM_NAME=$(basename "$RPM_FILE")
+          echo "RPM_FILE=$RPM_FILE" >> $GITHUB_OUTPUT
+          echo "RPM_NAME=$RPM_NAME" >> $GITHUB_OUTPUT
+          echo "Built RPM: $RPM_NAME"
+
+      - name: Upload RPM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-package
+          path: ${{ steps.rpm.outputs.RPM_FILE }}
+
+      - name: Attach RPM to release
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ${{ steps.rpm.outputs.RPM_FILE }}
+          asset_name: ${{ steps.rpm.outputs.RPM_NAME }}
+          asset_content_type: application/x-rpm
+
+  publish-to-pages:
+    needs: build-rpm
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download RPM artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rpm-package
+          path: ./artifacts
+
+      - name: Checkout gh-pages branch
+        run: |
+          git fetch origin gh-pages || git checkout --orphan gh-pages
+          git checkout gh-pages || git checkout --orphan gh-pages
+          
+          # Keep existing RPMs, clean everything else
+          if [ -d "rpms" ]; then
+            mv rpms /tmp/rpms-backup
+          fi
+          
+          git rm -rf . || true
+          
+          if [ -d "/tmp/rpms-backup" ]; then
+            mkdir -p rpms
+            mv /tmp/rpms-backup/* rpms/ || true
+            rmdir /tmp/rpms-backup
+          fi
+
+      - name: Copy new RPM to rpms directory
+        run: |
+          mkdir -p rpms
+          cp artifacts/*.rpm rpms/
+          
+          # Create a symlink to latest
+          cd rpms
+          LATEST_RPM=$(ls -t mockzure-*.rpm | head -n 1)
+          ln -sf "$LATEST_RPM" mockzure-latest.rpm
+          cd ..
+
+      - name: Generate repository metadata
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y createrepo-c
+          createrepo_c rpms/
+
+      - name: Generate index.html
+        run: |
+          cat > index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Mockzure RPM Repository</title>
+              <style>
+                  * {
+                      margin: 0;
+                      padding: 0;
+                      box-sizing: border-box;
+                  }
+                  
+                  body {
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                      min-height: 100vh;
+                      padding: 2rem;
+                  }
+                  
+                  .container {
+                      max-width: 900px;
+                      margin: 0 auto;
+                      background: white;
+                      border-radius: 12px;
+                      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                      overflow: hidden;
+                  }
+                  
+                  .header {
+                      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                      color: white;
+                      padding: 2rem;
+                      text-align: center;
+                  }
+                  
+                  .header h1 {
+                      font-size: 2.5rem;
+                      margin-bottom: 0.5rem;
+                  }
+                  
+                  .header p {
+                      font-size: 1.1rem;
+                      opacity: 0.9;
+                  }
+                  
+                  .content {
+                      padding: 2rem;
+                  }
+                  
+                  .section {
+                      margin-bottom: 2rem;
+                  }
+                  
+                  .section h2 {
+                      color: #667eea;
+                      margin-bottom: 1rem;
+                      font-size: 1.5rem;
+                      border-bottom: 2px solid #667eea;
+                      padding-bottom: 0.5rem;
+                  }
+                  
+                  .package-list {
+                      list-style: none;
+                  }
+                  
+                  .package-item {
+                      background: #f7fafc;
+                      padding: 1rem;
+                      margin-bottom: 0.5rem;
+                      border-radius: 8px;
+                      display: flex;
+                      justify-content: space-between;
+                      align-items: center;
+                      transition: transform 0.2s, box-shadow 0.2s;
+                  }
+                  
+                  .package-item:hover {
+                      transform: translateY(-2px);
+                      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+                  }
+                  
+                  .package-name {
+                      font-weight: 600;
+                      color: #2d3748;
+                      font-family: 'Courier New', monospace;
+                  }
+                  
+                  .download-btn {
+                      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                      color: white;
+                      padding: 0.5rem 1.5rem;
+                      border-radius: 6px;
+                      text-decoration: none;
+                      font-weight: 500;
+                      transition: transform 0.2s;
+                  }
+                  
+                  .download-btn:hover {
+                      transform: scale(1.05);
+                  }
+                  
+                  .code-block {
+                      background: #1a202c;
+                      color: #68d391;
+                      padding: 1.5rem;
+                      border-radius: 8px;
+                      overflow-x: auto;
+                      font-family: 'Courier New', monospace;
+                      font-size: 0.9rem;
+                      line-height: 1.6;
+                  }
+                  
+                  .code-block pre {
+                      margin: 0;
+                  }
+                  
+                  .note {
+                      background: #fef5e7;
+                      border-left: 4px solid #f39c12;
+                      padding: 1rem;
+                      margin: 1rem 0;
+                      border-radius: 4px;
+                  }
+                  
+                  .footer {
+                      text-align: center;
+                      padding: 2rem;
+                      color: #718096;
+                      border-top: 1px solid #e2e8f0;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="container">
+                  <div class="header">
+                      <h1>📦 Mockzure RPM Repository</h1>
+                      <p>Mock Azure Service - Development & Testing</p>
+                  </div>
+                  
+                  <div class="content">
+                      <div class="section">
+                          <h2>Available Packages</h2>
+                          <ul class="package-list" id="package-list">
+                              <!-- Packages will be inserted here by JavaScript -->
+                          </ul>
+                      </div>
+                      
+                      <div class="section">
+                          <h2>Installation Instructions</h2>
+                          
+                          <h3 style="margin: 1rem 0 0.5rem 0; color: #2d3748;">Using DNF/TDNF (Recommended)</h3>
+                          <div class="code-block">
+                              <pre># Add repository configuration
+          sudo tee /etc/yum.repos.d/mockzure.repo << 'REPO'
+          [mockzure]
+          name=Mockzure RPM Repository
+          baseurl=https://yourcloudtools.github.io/Mockzure/rpms
+          enabled=1
+          gpgcheck=0
+          REPO
+
+          # Install the latest version
+          sudo dnf install mockzure
+
+          # Or install specific version
+          sudo dnf install mockzure-20241011.143055</pre>
+                          </div>
+                          
+                          <h3 style="margin: 1.5rem 0 0.5rem 0; color: #2d3748;">Direct Download</h3>
+                          <div class="code-block">
+                              <pre># Download and install latest
+          curl -LO https://yourcloudtools.github.io/Mockzure/rpms/mockzure-latest.rpm
+          sudo dnf install -y mockzure-latest.rpm
+
+          # Or download specific version
+          curl -LO https://yourcloudtools.github.io/Mockzure/rpms/mockzure-VERSION.rpm
+          sudo dnf install -y mockzure-VERSION.rpm</pre>
+                          </div>
+                      </div>
+                      
+                      <div class="section">
+                          <h2>Post-Installation</h2>
+                          <div class="code-block">
+                              <pre># Enable and start the service
+          sudo systemctl enable mockzure
+          sudo systemctl start mockzure
+
+          # Check status
+          sudo systemctl status mockzure
+
+          # View logs
+          sudo journalctl -u mockzure -f</pre>
+                          </div>
+                          
+                          <div class="note">
+                              <strong>📝 Note:</strong> After installation, configure the service in <code>/etc/mockzure/config.json</code> before starting.
+                          </div>
+                      </div>
+                      
+                      <div class="section">
+                          <h2>About Mockzure</h2>
+                          <p style="line-height: 1.6; color: #4a5568;">
+                              Mockzure is a lightweight mock Azure API server that simulates Azure Resource Manager 
+                              and Entra ID (Azure AD) endpoints for testing and development purposes. It provides 
+                              a complete mock environment for VM management, user authentication, and OIDC/OAuth2 flows.
+                          </p>
+                          <ul style="margin-top: 1rem; padding-left: 1.5rem; line-height: 1.8; color: #4a5568;">
+                              <li>Mock Azure Resource Manager endpoints</li>
+                              <li>Simulated Entra ID (Azure AD) authentication</li>
+                              <li>OIDC/OAuth2 support for testing</li>
+                              <li>Web-based management portal</li>
+                              <li>Systemd service integration</li>
+                          </ul>
+                      </div>
+                  </div>
+                  
+                  <div class="footer">
+                      <p>Part of the <a href="https://github.com/yourcloudtools/Mockzure" style="color: #667eea; text-decoration: none;">Mockzure</a> project by YourCloudTools</p>
+                      <p style="margin-top: 0.5rem; font-size: 0.9rem;">Built with ❤️ for the developer community</p>
+                  </div>
+              </div>
+              
+              <script>
+                  // Fetch and display available packages
+                  async function loadPackages() {
+                      try {
+                          const response = await fetch('rpms/');
+                          const text = await response.text();
+                          const parser = new DOMParser();
+                          const doc = parser.parseFromString(text, 'text/html');
+                          
+                          const links = doc.querySelectorAll('a');
+                          const packages = [];
+                          
+                          links.forEach(link => {
+                              const href = link.getAttribute('href');
+                              if (href && href.endsWith('.rpm') && !href.includes('mockzure-latest')) {
+                                  packages.push(href);
+                              }
+                          });
+                          
+                          // Sort packages by version (newest first)
+                          packages.sort().reverse();
+                          
+                          // Add latest symlink at the top
+                          packages.unshift('mockzure-latest.rpm');
+                          
+                          const packageList = document.getElementById('package-list');
+                          
+                          if (packages.length === 0) {
+                              packageList.innerHTML = '<li class="package-item"><span class="package-name">No packages available yet</span></li>';
+                              return;
+                          }
+                          
+                          packageList.innerHTML = packages.map(pkg => {
+                              const isLatest = pkg === 'mockzure-latest.rpm';
+                              const label = isLatest ? `${pkg} (Latest)` : pkg;
+                              return `
+                                  <li class="package-item">
+                                      <span class="package-name">${label}</span>
+                                      <a href="rpms/${pkg}" class="download-btn" download>Download</a>
+                                  </li>
+                              `;
+                          }).join('');
+                      } catch (error) {
+                          console.error('Error loading packages:', error);
+                          document.getElementById('package-list').innerHTML = 
+                              '<li class="package-item"><span class="package-name">Error loading packages</span></li>';
+                      }
+                  }
+                  
+                  // Load packages when page loads
+                  loadPackages();
+              </script>
+          </body>
+          </html>
+          EOF
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and push to gh-pages
+        run: |
+          git add .
+          git status
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            VERSION="${{ needs.build-rpm.steps.version.outputs.VERSION }}"
+            git commit -m "Publish RPM package version $VERSION"
+            git push origin gh-pages
+          fi
+
+      - name: Display Pages URL
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          REPO_OWNER="${GITHUB_REPOSITORY%/*}"
+          echo "🚀 RPM repository published!"
+          echo "📦 View at: https://${REPO_OWNER}.github.io/${REPO_NAME}/"
+
