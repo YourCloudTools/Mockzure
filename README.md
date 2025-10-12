@@ -32,20 +32,46 @@ The Mockzure portal provides a modern, tabbed interface similar to the Azure Por
 
 ## Quick Start
 
+### Prerequisites
+
+- Docker and Docker Compose installed (recommended), OR
+- Go 1.23+ for building from source
+
 ### Configuration
 
-Before running Mockzure, copy the example configuration file:
+Before running Mockzure, create your configuration file:
 
 ```bash
+# Copy the example configuration
 cp config.json.example config.json
+
+# Edit the configuration with your service account credentials
+nano config.json  # or use your preferred editor
 ```
 
-Edit `config.json` to add your service account credentials. The config file contains:
-- **applicationId**: The client ID for the service account
-- **secret**: The client secret for authentication
-- **graphPermissions**: Optional Microsoft Graph API permissions (e.g., "User.Read.All")
+The `config.json` file defines service account credentials for authentication. See [Configuration Guide](docs/CONFIGURATION.md) for detailed documentation.
 
 **Note:** `config.json` is excluded from version control for security. Never commit actual secrets to the repository.
+
+### Run with Docker Compose (Recommended)
+
+The easiest way to run Mockzure:
+
+```bash
+# 1. Ensure config.json exists (see Configuration above)
+cp config.json.example config.json
+
+# 2. Start Mockzure
+docker compose up -d
+
+# 3. View logs
+docker compose logs -f
+
+# 4. Stop Mockzure
+docker compose down
+```
+
+Access the web portal at: http://localhost:8090
 
 ### Using the Web Portal
 
@@ -61,25 +87,155 @@ You'll see three tabs:
 
 ## Installation
 
-### Docker (Recommended)
+### Docker Compose (Recommended)
 
-The easiest way to run Mockzure is using Docker. Pre-built multi-platform images are available on GitHub Container Registry:
+Docker Compose is the recommended way to run Mockzure. It handles configuration mounting and container lifecycle automatically.
+
+**Prerequisites:**
+- Docker Engine 20.10+ and Docker Compose V2
+- `config.json` file in the project directory
+
+**Steps:**
 
 ```bash
-# Pull the latest version
-docker pull ghcr.io/yourcloudtools/mockzure:latest
+# 1. Clone the repository (if not already done)
+git clone https://github.com/YourCloudTools/Mockzure.git
+cd Mockzure
 
-# Run Mockzure
-docker run -d -p 8090:8090 --name mockzure ghcr.io/yourcloudtools/mockzure:latest
+# 2. Create configuration
+cp config.json.example config.json
+# Edit config.json with your credentials
 
-# Or run a specific version
-docker pull ghcr.io/yourcloudtools/mockzure:v1.0.0
-docker run -d -p 8090:8090 ghcr.io/yourcloudtools/mockzure:v1.0.0
+# 3. Start Mockzure
+docker compose up -d
+
+# 4. Check status
+docker compose ps
+
+# 5. View logs
+docker compose logs -f mockzure
+
+# 6. Access the portal
+# Open http://localhost:8090 in your browser
 ```
 
-Access the web portal at: http://localhost:8090
+**Managing the Service:**
 
-Supported platforms: `linux/amd64`, `linux/arm64`
+```bash
+# Stop Mockzure
+docker compose stop
+
+# Start Mockzure
+docker compose start
+
+# Restart Mockzure (e.g., after config changes)
+docker compose restart
+
+# Stop and remove container
+docker compose down
+
+# View real-time logs
+docker compose logs -f
+
+# Rebuild and restart (if using local build)
+docker compose up -d --build
+```
+
+**Using Local Build:**
+
+To build from the local Dockerfile instead of pulling from GitHub Container Registry, edit `compose.yml`:
+
+```yaml
+services:
+  mockzure:
+    # Comment out the image line
+    # image: ghcr.io/yourcloudtools/mockzure:latest
+    # Uncomment the build section
+    build:
+      context: .
+      target: production
+```
+
+Then run:
+```bash
+docker compose up -d --build
+```
+
+### Docker Run
+
+If you prefer using `docker run` directly instead of Docker Compose:
+
+**With Config File (Recommended):**
+
+```bash
+# Pull the image
+docker pull ghcr.io/yourcloudtools/mockzure:latest
+
+# Run with config.json mounted from current directory
+docker run -d \
+  --name mockzure \
+  -p 8090:8090 \
+  -v $(pwd)/config.json:/app/config.json:ro \
+  --restart unless-stopped \
+  ghcr.io/yourcloudtools/mockzure:latest
+
+# View logs
+docker logs -f mockzure
+
+# Stop container
+docker stop mockzure
+
+# Remove container
+docker rm mockzure
+```
+
+**With Custom Config Path:**
+
+```bash
+# If config.json is in a different location
+docker run -d \
+  --name mockzure \
+  -p 8090:8090 \
+  -v /path/to/your/config.json:/app/config.json:ro \
+  --restart unless-stopped \
+  ghcr.io/yourcloudtools/mockzure:latest
+```
+
+**Without Config File (Uses Defaults):**
+
+```bash
+# Run without mounting config (will create default config)
+docker run -d \
+  --name mockzure \
+  -p 8090:8090 \
+  --restart unless-stopped \
+  ghcr.io/yourcloudtools/mockzure:latest
+```
+
+**Run Specific Version:**
+
+```bash
+# Run a specific tagged version
+docker run -d \
+  --name mockzure \
+  -p 8090:8090 \
+  -v $(pwd)/config.json:/app/config.json:ro \
+  ghcr.io/yourcloudtools/mockzure:v1.0.0
+```
+
+**Notes:**
+- The `:ro` flag mounts the config file as read-only for security
+- `--restart unless-stopped` automatically restarts the container after system reboot
+- Access the portal at: http://localhost:8090
+- Supported platforms: `linux/amd64`, `linux/arm64`
+
+### Docker Image Information
+
+Pre-built multi-platform images are available on GitHub Container Registry:
+
+- **Latest:** `ghcr.io/yourcloudtools/mockzure:latest`
+- **Specific Version:** `ghcr.io/yourcloudtools/mockzure:v1.0.0`
+- **Platforms:** `linux/amd64`, `linux/arm64`
 
 ### Pre-built Binaries
 
@@ -361,12 +517,45 @@ curl -X POST http://localhost:8090/mock/azure/users \
   }'
 ```
 
+## Configuration
+
+For detailed information about configuring Mockzure, see the [Configuration Guide](docs/CONFIGURATION.md).
+
+Quick configuration reference:
+- **Config File:** `config.json` (required for service account authentication)
+- **Schema:** Service accounts with applicationId, secret, and optional Graph permissions
+- **Location:** Project root (local), `/app/config.json` (Docker), `/etc/mockzure/config.json` (RPM)
+- **Security:** File is excluded from git, use read-only mounts in Docker
+
+Example minimal configuration:
+```json
+{
+  "serviceAccounts": [
+    {
+      "applicationId": "your-app-id",
+      "secret": "your-secret-key",
+      "graphPermissions": ["User.Read.All"]
+    }
+  ]
+}
+```
+
 ## Development Mode
 
 To run Mockzure in development mode with auto-reload:
 
 ```bash
 ./bin/dev.sh
+```
+
+### Development with Docker Compose
+
+```bash
+# Use the development target with live code mounting
+docker compose -f compose.dev.yml up
+
+# Or edit compose.yml to use the development stage
+# Change target: production to target: development
 ```
 
 ## Integration with Sandman
@@ -452,8 +641,14 @@ go build -o mockzure main.go
 # Build for local platform
 docker build -t mockzure:dev --target production .
 
+# Run your local build
+docker run -d -p 8090:8090 -v $(pwd)/config.json:/app/config.json:ro mockzure:dev
+
 # Build for multiple platforms (requires buildx)
 docker buildx build --platform linux/amd64,linux/arm64 -t mockzure:dev --target production .
+
+# Build development image with hot reload
+docker build -t mockzure:dev --target development .
 ```
 
 ## Notes

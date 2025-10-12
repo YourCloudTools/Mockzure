@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  mockzure:
+    image: ghcr.io/yourcloudtools/mockzure:latest
+    # Uncomment below to build from local Dockerfile instead
+    # build:
+    #   context: .
+    #   target: production
+    container_name: mockzure
+    ports:
+      - "8090:8090"
+    volumes:
+      # Mount your config.json from the host (read-only for security)
+      - ./config.json:/app/config.json:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8090/mock/azure/stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    environment:
+      # Optional environment variables can be added here
+      - TZ=UTC
+
