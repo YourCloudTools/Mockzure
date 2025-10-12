@@ -61,6 +61,52 @@ You'll see three tabs:
 
 ## Installation
 
+### Docker (Recommended)
+
+The easiest way to run Mockzure is using Docker. Pre-built multi-platform images are available on GitHub Container Registry:
+
+```bash
+# Pull the latest version
+docker pull ghcr.io/yourcloudtools/mockzure:latest
+
+# Run Mockzure
+docker run -d -p 8090:8090 --name mockzure ghcr.io/yourcloudtools/mockzure:latest
+
+# Or run a specific version
+docker pull ghcr.io/yourcloudtools/mockzure:v1.0.0
+docker run -d -p 8090:8090 ghcr.io/yourcloudtools/mockzure:v1.0.0
+```
+
+Access the web portal at: http://localhost:8090
+
+Supported platforms: `linux/amd64`, `linux/arm64`
+
+### Pre-built Binaries
+
+Download pre-built binaries from the [Releases page](https://github.com/YourCloudTools/Mockzure/releases):
+
+```bash
+# Linux (amd64)
+wget https://github.com/YourCloudTools/Mockzure/releases/latest/download/mockzure-linux-amd64
+chmod +x mockzure-linux-amd64
+./mockzure-linux-amd64
+
+# macOS (Apple Silicon)
+wget https://github.com/YourCloudTools/Mockzure/releases/latest/download/mockzure-darwin-arm64
+chmod +x mockzure-darwin-arm64
+./mockzure-darwin-arm64
+
+# Windows
+# Download mockzure-windows-amd64.exe from the releases page
+```
+
+Available binaries:
+- `mockzure-linux-amd64` - Linux x86_64
+- `mockzure-linux-arm64` - Linux ARM64
+- `mockzure-darwin-amd64` - macOS Intel
+- `mockzure-darwin-arm64` - macOS Apple Silicon
+- `mockzure-windows-amd64.exe` - Windows x86_64
+
 ### RPM Package (RHEL/Azure Linux/Fedora)
 
 Mockzure is available as an RPM package through our GitHub Pages repository.
@@ -360,6 +406,55 @@ Mockzure uses an in-memory data store with the following structure:
 - Display all user details
 - Role-based access visualization
 - Active/disabled status badges
+
+## Releases and Development
+
+### Creating a Release
+
+Releases are automated via GitHub Actions. To create a new release:
+
+```bash
+# Create and push a version tag
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+This automatically:
+- Builds binaries for all platforms (Linux, macOS, Windows)
+- Creates RPM packages
+- Builds and publishes multi-platform Docker images to GitHub Container Registry
+- Creates a GitHub release with all artifacts
+
+For detailed information, see [CI/CD Guide](docs/CICD_GUIDE.md).
+
+### Development
+
+To contribute to Mockzure:
+
+```bash
+# Clone the repository
+git clone https://github.com/YourCloudTools/Mockzure.git
+cd Mockzure
+
+# Build locally
+go build -o mockzure main.go
+
+# Run
+./mockzure
+
+# Or use the development script
+./bin/dev.sh
+```
+
+### Building Docker Images Locally
+
+```bash
+# Build for local platform
+docker build -t mockzure:dev --target production .
+
+# Build for multiple platforms (requires buildx)
+docker buildx build --platform linux/amd64,linux/arm64 -t mockzure:dev --target production .
+```
 
 ## Notes
 
