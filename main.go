@@ -1,16 +1,15 @@
 package main
 
 import (
-	"encoding/base64"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"log"
-	"net/http"
-	"net/url"
-	"os"
-	"strings"
-	"time"
+    "encoding/base64"
+    "encoding/json"
+    "fmt"
+    "log"
+    "net/http"
+    "net/url"
+    "os"
+    "strings"
+    "time"
 )
 
 // Lightweight replicas of types and behavior from Sandman's internal mock
@@ -371,15 +370,22 @@ func (s *Store) loadConfig() {
 				},
 			},
 		}
-		data, _ := json.MarshalIndent(defaultConfig, "", "  ")
-		ioutil.WriteFile(configPath, data, 0600)
-		s.config = defaultConfig
-		log.Printf("Created default config file: %s", configPath)
+        data, mErr := json.MarshalIndent(defaultConfig, "", "  ")
+        if mErr != nil {
+            log.Printf("Failed to marshal default config: %v", mErr)
+        } else {
+            if wErr := os.WriteFile(configPath, data, 0600); wErr != nil {
+                log.Printf("Failed to write default config file: %v", wErr)
+            } else {
+                log.Printf("Created default config file: %s", configPath)
+            }
+        }
+        s.config = defaultConfig
 		return
 	}
 
 	// Load existing config
-	data, err := ioutil.ReadFile(configPath)
+    data, err := os.ReadFile(configPath)
 	if err != nil {
 		log.Printf("Failed to read config file: %v", err)
 		s.config = &ServiceAccountConfig{}
@@ -532,6 +538,18 @@ func makeUnsignedJWT(claims map[string]interface{}) string {
 	hb, _ := json.Marshal(header)
 	pb, _ := json.Marshal(claims)
 	return b64url(hb) + "." + b64url(pb) + "."
+}
+
+// writeJSON writes a JSON response with error handling.
+// If status is 0, it defaults to 200 OK.
+func writeJSON(w http.ResponseWriter, status int, payload interface{}) {
+    w.Header().Set("Content-Type", "application/json")
+    if status != 0 {
+        w.WriteHeader(status)
+    }
+    if err := json.NewEncoder(w).Encode(payload); err != nil {
+        http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+    }
 }
 
 // renderUserSelectionPage renders an HTML page for selecting a user to log in as
@@ -929,7 +947,9 @@ func renderPortalPage(w http.ResponseWriter, store *Store) {
 </body>
 </html>`, len(store.vms), running, stopped)
 
-	w.Write([]byte(html))
+    if _, err := w.Write([]byte(html)); err != nil {
+        log.Printf("failed to write portal page: %v", err)
+    }
 }
 
 func renderUserSelectionPage(w http.ResponseWriter, r *http.Request, clientID, redirectURI, state, responseType, scope string, store *Store) {
@@ -1080,9 +1100,11 @@ func renderUserSelectionPage(w http.ResponseWriter, r *http.Request, clientID, r
 </body>
 </html>`
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(html))
+    w.Header().Set("Content-Type", "text/html; charset=utf-8")
+    w.WriteHeader(http.StatusOK)
+    if _, err := w.Write([]byte(html)); err != nil {
+        log.Printf("failed to write user selection page: %v", err)
+    }
 }
 
 func main() {
@@ -1104,8 +1126,7 @@ func main() {
 			"id_token_signing_alg_values_supported": []string{"none"},
 			"scopes_supported":                      []string{"openid", "profile", "email", "User.Read"},
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(doc)
+        writeJSON(w, 0, doc)
 	}
 
 	// OIDC Discovery endpoints (both root and tenant-specific)
@@ -1123,8 +1144,7 @@ func main() {
 			for _, c := range store.clients {
 				list = append(list, c)
 			}
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{"value": list, "count": len(list)})
+            writeJSON(w, 0, map[string]interface{}{"value": list, "count": len(list)})
 		case http.MethodPost:
 			var c RegisteredClient
 			if err := json.NewDecoder(r.Body).Decode(&c); err != nil || c.ClientID == "" {
@@ -1138,9 +1158,7 @@ func main() {
 				c.Scopes = []string{"openid", "profile", "email"}
 			}
 			store.clients[c.ClientID] = &c
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(c)
+            writeJSON(w, http.StatusCreated, c)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -1160,8 +1178,7 @@ func main() {
 	mux.HandleFunc("/mock/azure/resource-groups", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{"value": store.resourceGroups, "count": len(store.resourceGroups)})
+            writeJSON(w, 0, map[string]interface{}{"value": store.resourceGroups, "count": len(store.resourceGroups)})
 		case http.MethodPost:
 			var rg ResourceGroup
 			if err := json.NewDecoder(r.Body).Decode(&rg); err != nil {
@@ -1172,9 +1189,7 @@ func main() {
 				rg.Tags = map[string]string{}
 			}
 			store.resourceGroups = append(store.resourceGroups, &rg)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(rg)
+            writeJSON(w, http.StatusCreated, rg)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -1200,11 +1215,10 @@ func main() {
 							vms = append(vms, vm)
 						}
 					}
-					w.Header().Set("Content-Type", "application/json")
-					json.NewEncoder(w).Encode(map[string]interface{}{
-						"resourceGroup": rg,
-						"vms":           vms,
-					})
+                    writeJSON(w, 0, map[string]interface{}{
+                        "resourceGroup": rg,
+                        "vms":           vms,
+                    })
 					return
 				}
 			}
@@ -1218,8 +1232,7 @@ func main() {
 	mux.HandleFunc("/mock/azure/service-accounts", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{"value": store.serviceAccounts, "count": len(store.serviceAccounts)})
+            writeJSON(w, 0, map[string]interface{}{"value": store.serviceAccounts, "count": len(store.serviceAccounts)})
 		case http.MethodPost:
 			var sa ServiceAccount
 			if err := json.NewDecoder(r.Body).Decode(&sa); err != nil {
@@ -1231,9 +1244,7 @@ func main() {
 			}
 			sa.CreatedDateTime = time.Now()
 			store.serviceAccounts = append(store.serviceAccounts, &sa)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(sa)
+            writeJSON(w, http.StatusCreated, sa)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -1252,8 +1263,7 @@ func main() {
 		case http.MethodGet:
 			for _, sa := range store.serviceAccounts {
 				if sa.ID == saID || sa.ApplicationID == saID {
-					w.Header().Set("Content-Type", "application/json")
-					json.NewEncoder(w).Encode(sa)
+                    writeJSON(w, 0, sa)
 					return
 				}
 			}
@@ -1330,15 +1340,14 @@ func main() {
 						}
 
 						// Return single VM (not in array)
-						w.Header().Set("Content-Type", "application/json")
-						json.NewEncoder(w).Encode(map[string]interface{}{
-							"id":         vm.ID,
-							"name":       vm.Name,
-							"type":       "Microsoft.Compute/virtualMachines",
-							"location":   vm.Location,
-							"properties": properties,
-							"tags":       vm.Tags,
-						})
+                        writeJSON(w, 0, map[string]interface{}{
+                            "id":         vm.ID,
+                            "name":       vm.Name,
+                            "type":       "Microsoft.Compute/virtualMachines",
+                            "location":   vm.Location,
+                            "properties": properties,
+                            "tags":       vm.Tags,
+                        })
 						return
 					}
 				}
@@ -1410,10 +1419,9 @@ func main() {
 			}
 
 			// Return in Azure ARM format
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"value": filteredVMs,
-			})
+            writeJSON(w, 0, map[string]interface{}{
+                "value": filteredVMs,
+            })
 			return
 		}
 
@@ -1435,14 +1443,12 @@ func main() {
 						filteredVMs = append(filteredVMs, vm)
 					}
 				}
-				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(map[string]interface{}{"value": filteredVMs, "count": len(filteredVMs)})
+                writeJSON(w, 0, map[string]interface{}{"value": filteredVMs, "count": len(filteredVMs)})
 				return
 			}
 
 			// No authentication or regular user - return all VMs
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{"value": store.vms, "count": len(store.vms)})
+            writeJSON(w, 0, map[string]interface{}{"value": store.vms, "count": len(store.vms)})
 		case http.MethodPost:
 			var vm MockVM
 			if err := json.NewDecoder(r.Body).Decode(&vm); err != nil {
@@ -1460,9 +1466,7 @@ func main() {
 			}
 			vm.LastUpdated = time.Now()
 			store.vms = append(store.vms, &vm)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(vm)
+            writeJSON(w, http.StatusCreated, vm)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -1513,16 +1517,14 @@ func main() {
 			}
 
 			if len(parts) > 1 && parts[1] == "status" {
-				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(map[string]interface{}{
-					"status":      vm.Status,
-					"powerState":  vm.PowerState,
-					"lastUpdated": vm.LastUpdated,
-				})
+                writeJSON(w, 0, map[string]interface{}{
+                    "status":      vm.Status,
+                    "powerState":  vm.PowerState,
+                    "lastUpdated": vm.LastUpdated,
+                })
 				return
 			}
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(vm)
+            writeJSON(w, 0, vm)
 		case http.MethodPost:
 			if len(parts) < 2 {
 				http.Error(w, "Operation required", http.StatusBadRequest)
@@ -1543,8 +1545,7 @@ func main() {
 				vm.Status = "running"
 				vm.PowerState = "VM running"
 				vm.LastUpdated = time.Now()
-				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(map[string]interface{}{"message": fmt.Sprintf("VM %s started successfully", vmName), "status": "success"})
+                writeJSON(w, 0, map[string]interface{}{"message": fmt.Sprintf("VM %s started successfully", vmName), "status": "success"})
 			case "stop":
 				// Check stop permission
 				if !checkPermission(vm, "stop") {
@@ -1554,8 +1555,7 @@ func main() {
 				vm.Status = "stopped"
 				vm.PowerState = "VM deallocated"
 				vm.LastUpdated = time.Now()
-				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(map[string]interface{}{"message": fmt.Sprintf("VM %s stopped successfully", vmName), "status": "success"})
+                writeJSON(w, 0, map[string]interface{}{"message": fmt.Sprintf("VM %s stopped successfully", vmName), "status": "success"})
 			case "restart":
 				// Check restart permission
 				if !checkPermission(vm, "restart") {
@@ -1565,8 +1565,7 @@ func main() {
 				vm.Status = "running"
 				vm.PowerState = "VM running"
 				vm.LastUpdated = time.Now()
-				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(map[string]interface{}{"message": fmt.Sprintf("VM %s restarted successfully", vmName), "status": "success"})
+                writeJSON(w, 0, map[string]interface{}{"message": fmt.Sprintf("VM %s restarted successfully", vmName), "status": "success"})
 			case "tags":
 				var tags map[string]*string
 				if err := json.NewDecoder(r.Body).Decode(&tags); err != nil {
@@ -1580,8 +1579,7 @@ func main() {
 					}
 				}
 				vm.LastUpdated = time.Now()
-				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(map[string]interface{}{"message": fmt.Sprintf("Tags updated for VM %s", vmName), "status": "success"})
+                writeJSON(w, 0, map[string]interface{}{"message": fmt.Sprintf("Tags updated for VM %s", vmName), "status": "success"})
 			default:
 				http.Error(w, "Unknown operation", http.StatusBadRequest)
 			}
@@ -1604,8 +1602,7 @@ func main() {
 					}
 				}
 				vm.LastUpdated = time.Now()
-				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(map[string]interface{}{"message": fmt.Sprintf("Tags updated for VM %s", vmName), "status": "success"})
+                writeJSON(w, 0, map[string]interface{}{"message": fmt.Sprintf("Tags updated for VM %s", vmName), "status": "success"})
 			} else {
 				http.Error(w, "Operation required", http.StatusBadRequest)
 			}
@@ -1639,8 +1636,7 @@ func main() {
 
 		switch r.Method {
 		case http.MethodGet:
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{"value": store.users, "count": len(store.users)})
+            writeJSON(w, 0, map[string]interface{}{"value": store.users, "count": len(store.users)})
 		case http.MethodPost:
 			var user MockUser
 			if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
@@ -1654,9 +1650,7 @@ func main() {
 				user.Roles = []string{"User"}
 			}
 			store.users = append(store.users, &user)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(user)
+            writeJSON(w, http.StatusCreated, user)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -1675,8 +1669,7 @@ func main() {
 		case http.MethodGet:
 			for _, u := range store.users {
 				if u.ID == userID {
-					w.Header().Set("Content-Type", "application/json")
-					json.NewEncoder(w).Encode(u)
+                    writeJSON(w, 0, u)
 					return
 				}
 			}
@@ -1802,8 +1795,7 @@ func main() {
 					"expires_in":   3600,
 					"scope":        scope,
 				}
-				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(token)
+                writeJSON(w, 0, token)
 				return
 			}
 
@@ -1860,8 +1852,7 @@ func main() {
 				"scope":         ac.Scope,
 				"id_token":      idt,
 			}
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(token)
+            writeJSON(w, 0, token)
 			return
 		}
 		// fallback: JSON body with {code}
@@ -1899,8 +1890,7 @@ func main() {
 
 		idt := makeUnsignedJWT(map[string]interface{}{"iss": iss, "aud": ac.ClientID, "sub": ac.UserSub, "email": email, "name": name, "given_name": givenName, "family_name": familyName, "iat": time.Now().Unix(), "exp": time.Now().Add(1 * time.Hour).Unix()})
 		token := map[string]interface{}{"access_token": "mock_access_token_" + req.Code, "token_type": "Bearer", "expires_in": 3600, "refresh_token": "mock_refresh_token_" + req.Code, "scope": ac.Scope, "id_token": idt}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(token)
+        writeJSON(w, 0, token)
 	})
 
 	// Legacy alias userinfo
@@ -1963,8 +1953,7 @@ func main() {
 				UserPrincipalName: u.UserPrincipalName,
 			}
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(info)
+        writeJSON(w, 0, info)
 	})
 
 	// Stats and data management
@@ -1987,8 +1976,7 @@ func main() {
 			"stopped_vms": stopped,
 			"total_users": len(store.users),
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(stats)
+        writeJSON(w, 0, stats)
 	})
 
 	mux.HandleFunc("/mock/azure/data/clear", func(w http.ResponseWriter, r *http.Request) {
@@ -1998,8 +1986,7 @@ func main() {
 		}
 		store.vms = []*MockVM{}
 		store.users = []*MockUser{}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"message": "Mock data cleared successfully", "status": "success"})
+        writeJSON(w, 0, map[string]interface{}{"message": "Mock data cleared successfully", "status": "success"})
 	})
 
 	mux.HandleFunc("/mock/azure/data/reset", func(w http.ResponseWriter, r *http.Request) {
@@ -2010,13 +1997,19 @@ func main() {
 		store.vms = nil
 		store.users = nil
 		store.init()
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"message": "Mock data reset to defaults successfully", "status": "success"})
+        writeJSON(w, 0, map[string]interface{}{"message": "Mock data reset to defaults successfully", "status": "success"})
 	})
 
 	addr := ":8090"
 	log.Printf("Starting Mockzure on %s", addr)
-	srv := &http.Server{Addr: addr, Handler: mux}
+    srv := &http.Server{
+        Addr:              addr,
+        Handler:           mux,
+        ReadHeaderTimeout: 5 * time.Second,
+        ReadTimeout:       15 * time.Second,
+        WriteTimeout:      15 * time.Second,
+        IdleTimeout:       60 * time.Second,
+    }
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Mockzure failed to start: %v", err)
 	}
