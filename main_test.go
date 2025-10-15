@@ -226,30 +226,30 @@ func TestServiceAccountPermissions(t *testing.T) {
 			permission:    "delete",
 			expected:      false,
 		},
-		// rg-prod permissions (read only)
+    // rg-prod permissions (read, start, stop, restart)
 		{
-			name:          "Sandman can read rg-prod",
-			resourceGroup: "rg-prod",
-			permission:    "read",
-			expected:      true,
+            name:          "Sandman can read rg-prod",
+            resourceGroup: "rg-prod",
+            permission:    "read",
+            expected:      true,
 		},
 		{
-			name:          "Sandman cannot start rg-prod",
-			resourceGroup: "rg-prod",
-			permission:    "start",
-			expected:      false,
+            name:          "Sandman can start rg-prod",
+            resourceGroup: "rg-prod",
+            permission:    "start",
+            expected:      true,
 		},
 		{
-			name:          "Sandman cannot stop rg-prod",
-			resourceGroup: "rg-prod",
-			permission:    "stop",
-			expected:      false,
+            name:          "Sandman can stop rg-prod",
+            resourceGroup: "rg-prod",
+            permission:    "stop",
+            expected:      true,
 		},
 		{
-			name:          "Sandman cannot restart rg-prod",
-			resourceGroup: "rg-prod",
-			permission:    "restart",
-			expected:      false,
+            name:          "Sandman can restart rg-prod",
+            resourceGroup: "rg-prod",
+            permission:    "restart",
+            expected:      true,
 		},
 		{
 			name:          "Sandman cannot delete rg-prod",
@@ -333,15 +333,15 @@ func TestVMOperationsWithPermissions(t *testing.T) {
 			expectSuccess:  true,
 			expectedStatus: http.StatusOK,
 		},
-		{
-			name:           "Sandman cannot start VM in rg-prod",
-			applicationID:  "sandman-app-id-12345",
-			secret:         "sandman-secret-key-development-only",
-			vmName:         "vm-web-prod-01",
-			operation:      "start",
-			expectSuccess:  false,
-			expectedStatus: http.StatusForbidden,
-		},
+        {
+            name:           "Sandman can start VM in rg-prod",
+            applicationID:  "sandman-app-id-12345",
+            secret:         "sandman-secret-key-development-only",
+            vmName:         "vm-web-prod-01",
+            operation:      "start",
+            expectSuccess:  true,
+            expectedStatus: http.StatusOK,
+        },
 		{
 			name:           "Admin can start VM in rg-prod",
 			applicationID:  "admin-automation-app-id",
@@ -603,15 +603,18 @@ func TestSandmanAdminUserSeesAllAssignedVMs(t *testing.T) {
 				}
 			}
 
-			// VMs in rg-prod should NOT have start/stop/restart permissions
-			if vm.ResourceGroup == "rg-prod" {
-				if serviceAccount.hasPermission(vm.ResourceGroup, "start") {
-					t.Errorf("Sandman should NOT have start permission on %s in rg-prod", vm.Name)
-				}
-				if serviceAccount.hasPermission(vm.ResourceGroup, "stop") {
-					t.Errorf("Sandman should NOT have stop permission on %s in rg-prod", vm.Name)
-				}
-			}
+            // VMs in rg-prod should also have start/stop/restart permissions
+            if vm.ResourceGroup == "rg-prod" {
+                if !serviceAccount.hasPermission(vm.ResourceGroup, "start") {
+                    t.Errorf("Sandman should have start permission on %s in rg-prod", vm.Name)
+                }
+                if !serviceAccount.hasPermission(vm.ResourceGroup, "stop") {
+                    t.Errorf("Sandman should have stop permission on %s in rg-prod", vm.Name)
+                }
+                if !serviceAccount.hasPermission(vm.ResourceGroup, "restart") {
+                    t.Errorf("Sandman should have restart permission on %s in rg-prod", vm.Name)
+                }
+            }
 		})
 	}
 

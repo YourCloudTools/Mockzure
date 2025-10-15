@@ -325,7 +325,7 @@ func (s *Store) init() {
 				},
 				{
 					ResourceGroup: "rg-prod",
-					Permissions:   []string{"read"},
+					Permissions:   []string{"read", "start", "stop", "restart"},
 				},
 			},
 		},
