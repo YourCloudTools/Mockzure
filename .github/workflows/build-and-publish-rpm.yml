@@ -29,7 +29,7 @@ jobs:
           go-version: '1.22'
 
       - name: Download test coverage artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: coverage-report-go-1.23
           path: ./
@@ -112,14 +112,11 @@ jobs:
 
       - name: Attach RPM to release
         if: github.event_name == 'release'
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ${{ steps.rpm.outputs.RPM_FILE }}
-          asset_name: ${{ steps.rpm.outputs.RPM_NAME }}
-          asset_content_type: application/x-rpm
+          files: ${{ steps.rpm.outputs.RPM_FILE }}
 
   publish-to-pages:
     needs: build-rpm
