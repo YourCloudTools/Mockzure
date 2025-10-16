@@ -2,6 +2,8 @@
 
 A lightweight mock Azure service for development and testing. Mockzure provides a simulated Azure environment with resource management, user authentication, and OIDC/OAuth2 support.
 
+📚 **[View Documentation](https://yourcloudtools.github.io/Mockzure/)** | 🐳 **[Docker Image](https://github.com/YourCloudTools/Mockzure/pkgs/container/mockzure)** | 📦 **[RPM Repository](https://yourcloudtools.github.io/Mockzure/rpms/)**
+
 ## Features
 
 ### Resource Organization
@@ -520,6 +522,8 @@ curl -X POST http://localhost:8090/mock/azure/users \
 ## Configuration
 
 For detailed information about configuring Mockzure, see the [Configuration Guide](docs/CONFIGURATION.md).
+
+For Azure API compatibility information, see the [Azure API Compatibility Report](docs/AZURE_API_COMPATIBILITY.md).
 
 Quick configuration reference:
 - **Config File:** `config.json` (required for service account authentication)

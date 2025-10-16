@@ -1,0 +1,173 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        go-version: ['1.21', '1.22', '1.23']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Run test script
+        run: ./test.sh
+
+      - name: Run compatibility tests with coverage
+        run: ./test.sh --coverage
+
+      - name: Generate comprehensive coverage report
+        if: matrix.go-version == '1.23'
+        run: |
+          # Generate coverage for all packages
+          go test -coverprofile=coverage.out -covermode=atomic ./...
+          
+          # Generate HTML coverage report
+          go tool cover -html=coverage.out -o coverage.html
+          
+          # Generate coverage summary
+          echo "## Coverage Summary" > coverage-summary.txt
+          go tool cover -func=coverage.out | tail -1 >> coverage-summary.txt
+          echo "" >> coverage-summary.txt
+          echo "## Function Coverage" >> coverage-summary.txt
+          go tool cover -func=coverage.out | grep -v "total:" >> coverage-summary.txt
+
+      - name: Upload test coverage
+        uses: actions/upload-artifact@v3
+        if: matrix.go-version == '1.23'
+        with:
+          name: coverage-report-go-${{ matrix.go-version }}
+          path: |
+            coverage.out
+            coverage.html
+            coverage-summary.txt
+
+  compatibility-report:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Generate compatibility report
+        run: |
+          go mod download
+          go run cmd/generate_compatibility_report/main.go
+
+      - name: Upload compatibility report
+        uses: actions/upload-artifact@v3
+        with:
+          name: azure-api-compatibility-report
+          path: |
+            docs/AZURE_API_COMPATIBILITY.md
+            docs/AZURE_API_COMPATIBILITY.json
+
+  security-scan:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Run Gosec Security Scanner
+        uses: securecodewarrior/github-action-gosec@master
+        with:
+          args: '-fmt sarif -out gosec.sarif ./...'
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: gosec.sarif
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          args: --timeout=5m
+
+  build-verification:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Build Mockzure
+        run: |
+          go build -v -o mockzure main.go
+          ./mockzure --help || echo "Mockzure built successfully"
+
+      - name: Build report generator
+        run: |
+          go build -v -o generate-report cmd/generate_compatibility_report/main.go
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: mockzure-binaries
+          path: |
+            mockzure
+            generate-report

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mockzure - Mock Azure Service</title>
+    <meta name="description" content="A lightweight mock Azure service for development and testing. Mockzure provides a simulated Azure environment with resource management, user authentication, and OIDC/OAuth2 support.">
+    <link rel="stylesheet" href="assets/style.css">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔵</text></svg>">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">🔵 Mockzure</a>
+            <nav class="nav">
+                <a href="index.html">Home</a>
+                <a href="getting-started.html">Getting Started</a>
+                <a href="api-reference.html">API Reference</a>
+                <a href="architecture.html">Architecture</a>
+                <a href="compatibility.html">Compatibility</a>
+                <a href="coverage.html">Coverage</a>
+                <a href="https://github.com/YourCloudTools/Mockzure" target="_blank">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <section class="hero">
+            <h1>Mockzure</h1>
+            <p>A lightweight mock Azure service for development and testing. Mockzure provides a simulated Azure environment with resource management, user authentication, and OIDC/OAuth2 support.</p>
+            
+            <div class="badges">
+                <a href="https://github.com/YourCloudTools/Mockzure" class="badge">
+                    <img src="https://img.shields.io/github/stars/YourCloudTools/Mockzure?style=social" alt="GitHub stars">
+                </a>
+                <a href="coverage.html" class="badge">
+                    <!-- COVERAGE_BADGE_START -->
+                    <img src="https://img.shields.io/badge/coverage-17.6%25-orange" alt="Coverage">
+                    <!-- COVERAGE_BADGE_END -->
+                </a>
+                <a href="https://github.com/YourCloudTools/Mockzure/releases" class="badge">
+                    <img src="https://img.shields.io/github/v/release/YourCloudTools/Mockzure" alt="Latest release">
+                </a>
+                <a href="https://github.com/YourCloudTools/Mockzure/actions" class="badge">
+                    <img src="https://img.shields.io/github/workflow/status/YourCloudTools/Mockzure/Build%20and%20Publish%20RPM" alt="Build status">
+                </a>
+            </div>
+
+            <div style="margin-top: 2rem;">
+                <a href="getting-started.html" class="btn">Get Started</a>
+                <a href="https://github.com/YourCloudTools/Mockzure" class="btn btn-secondary">View on GitHub</a>
+            </div>
+        </section>
+
+        <section class="cards">
+            <div class="card">
+                <h3>🚀 Quick Start</h3>
+                <p>Get Mockzure running in minutes with Docker Compose. Perfect for local development and testing scenarios.</p>
+                <pre><code>docker compose up -d</code></pre>
+                <a href="getting-started.html" class="btn">Learn More</a>
+            </div>
+
+            <div class="card">
+                <h3>🔧 API Compatible</h3>
+                <p>Full compatibility with Azure APIs including Resource Manager, Microsoft Graph, and OIDC/OAuth2 endpoints.</p>
+                <p><strong>84.2% compatibility</strong> across 19 endpoints</p>
+                <a href="compatibility.html" class="btn">View Compatibility</a>
+            </div>
+
+            <div class="card">
+                <h3>🎯 Modern UI</h3>
+                <p>Beautiful web portal with tabbed interface similar to Azure Portal. Manage VMs, users, and app registrations.</p>
+                <p>Access at <code>http://localhost:8090</code></p>
+                <a href="architecture.html" class="btn">View Architecture</a>
+            </div>
+        </section>
+
+        <section>
+            <h2>Key Features</h2>
+            <div class="cards">
+                <div class="card">
+                    <h3>🗂️ Resource Groups</h3>
+                    <p>Organize VMs and compute resources into resource groups (rg-dev, rg-prod) with proper Azure-style management.</p>
+                </div>
+
+                <div class="card">
+                    <h3>👥 Entra ID</h3>
+                    <p>User management with roles, permissions, and app registrations. Full OAuth2/OIDC support for authentication testing.</p>
+                </div>
+
+                <div class="card">
+                    <h3>⚙️ VM Management</h3>
+                    <p>Start, stop, restart VMs with real-time status updates. Support for different VM sizes and operating systems.</p>
+                </div>
+
+                <div class="card">
+                    <h3>🔐 Authentication</h3>
+                    <p>Service account authentication with Graph API permissions. Role-based access control (RBAC) enforcement.</p>
+                </div>
+
+                <div class="card">
+                    <h3>📊 Statistics</h3>
+                    <p>Real-time statistics dashboard showing VM counts, status, and system information.</p>
+                </div>
+
+                <div class="card">
+                    <h3>🔄 Data Management</h3>
+                    <p>Reset to defaults or clear all data. Perfect for testing different scenarios and configurations.</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Installation Options</h2>
+            <div class="cards">
+                <div class="card">
+                    <h3>🐳 Docker Compose (Recommended)</h3>
+                    <p>Easiest way to get started. Handles configuration and container lifecycle automatically.</p>
+                    <pre><code>docker compose up -d</code></pre>
+                </div>
+
+                <div class="card">
+                    <h3>📦 RPM Package</h3>
+                    <p>Native installation for RHEL, Fedora, and Azure Linux systems.</p>
+                    <pre><code>sudo dnf install mockzure</code></pre>
+                </div>
+
+                <div class="card">
+                    <h3>💻 Pre-built Binaries</h3>
+                    <p>Download and run directly on Linux, macOS, or Windows.</p>
+                    <pre><code>./mockzure</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Default Resources</h2>
+            <p>Mockzure comes pre-configured with sample data to get you started quickly:</p>
+            
+            <h3>Resource Groups</h3>
+            <ul>
+                <li><strong>rg-dev</strong> - Development environment (East US)</li>
+                <li><strong>rg-prod</strong> - Production environment (West US)</li>
+            </ul>
+
+            <h3>Virtual Machines</h3>
+            <ul>
+                <li><strong>vm-web-01</strong> - Web server (Running, Standard_B2s, Linux)</li>
+                <li><strong>vm-api-01</strong> - API server (Stopped, Standard_B2s, Linux)</li>
+                <li><strong>vm-web-prod-01</strong> - Production web server (Running, Standard_D2s_v3, Linux)</li>
+            </ul>
+
+            <h3>Users</h3>
+            <ul>
+                <li><strong>John Doe</strong> - Senior Developer (john.doe@company.com)</li>
+                <li><strong>Jane Smith</strong> - DevOps Engineer (jane.smith@company.com)</li>
+                <li><strong>Admin User</strong> - System Administrator (admin@company.com)</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Integration with Sandman</h2>
+            <p>Mockzure is designed to work seamlessly with <a href="https://github.com/YourCloudTools/Sandman">Sandman</a> for local development and testing:</p>
+            <ul>
+                <li>Configure Sandman to use Mockzure as the Azure endpoint</li>
+                <li>Use the OAuth2/OIDC endpoints for authentication testing</li>
+                <li>Test VM management operations without affecting real Azure resources</li>
+                <li>Simulate different user roles and permissions</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2024 YourCloudTools. Part of the Sandman project.</p>
+        <p>
+            <a href="https://github.com/YourCloudTools/Mockzure">GitHub</a> |
+            <a href="https://yourcloudtools.com">YourCloudTools</a> |
+            <a href="https://github.com/YourCloudTools/Sandman">Sandman</a>
+        </p>
+    </footer>
+
+    <script src="assets/script.js"></script>
+</body>
+</html>
