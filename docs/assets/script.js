@@ -226,3 +226,4 @@ window.MockzureDocs = {
     formatBytes,
     formatDate
 };
+
