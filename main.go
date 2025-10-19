@@ -1929,7 +1929,7 @@ func main() {
 			delete(store.codes, code)
 			// build id_token - look up user from store
 			iss := baseURL(r)
-			var email, name, givenName, familyName string = "unknown@dev.local", "Unknown User", "Unknown", "User"
+			var email, name, givenName, familyName = "unknown@dev.local", "Unknown User", "Unknown", "User"
 
 			// Find the user in the store
 			for _, user := range store.users {
@@ -1991,7 +1991,7 @@ func main() {
 		iss := baseURL(r)
 
 		// Look up user from store
-		var email, name, givenName, familyName string = "unknown@dev.local", "Unknown User", "Unknown", "User"
+		var email, name, givenName, familyName = "unknown@dev.local", "Unknown User", "Unknown", "User"
 		for _, user := range store.users {
 			if user.ID == ac.UserSub {
 				email = user.UserPrincipalName
