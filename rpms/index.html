@@ -225,7 +225,7 @@ sudo journalctl -u mockzure -f</pre>
         // Fetch and display available packages
         async function loadPackages() {
             try {
-                const response = await fetch('rpms/');
+                const response = await fetch('./');
                 const text = await response.text();
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(text, 'text/html');
@@ -259,7 +259,7 @@ sudo journalctl -u mockzure -f</pre>
                     return `
                         <li class="package-item">
                             <span class="package-name">${label}</span>
-                            <a href="rpms/${pkg}" class="download-btn" download>Download</a>
+                            <a href="${pkg}" class="download-btn" download>Download</a>
                         </li>
                     `;
                 }).join('');
