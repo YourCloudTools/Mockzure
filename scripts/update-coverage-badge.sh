@@ -159,29 +159,46 @@ ${BADGE_HTML}\\
         rm -f "${file}.tmp"
     else
         # Fallback: replace any existing coverage badge
+        # This pattern is more flexible and handles various badge formats
         sed -i.tmp "s|<img src=\"https://img.shields.io/badge/coverage-[0-9.]*%25-[^\"]*\" alt=\"Coverage\">|${BADGE_HTML}|g" "$file"
         rm -f "${file}.tmp"
     fi
     
-    # Verify the update
+    # Verify the update was successful
     if grep -q "$TOTAL_COVERAGE%" "$file"; then
         print_success "Updated coverage badge in $file"
         rm -f "${file}.backup"
+        return 0
     else
+        # Check if the file was actually modified
+        if ! diff -q "$file" "${file}.backup" >/dev/null 2>&1; then
+            print_warning "File was modified but coverage percentage not found. Checking for badge update..."
+            if grep -q "img.shields.io.*coverage.*$TOTAL_COVERAGE" "$file"; then
+                print_success "Updated coverage badge in $file (alternative format)"
+                rm -f "${file}.backup"
+                return 0
+            fi
+        fi
+        
         print_error "Failed to update $file, restoring backup"
         mv "${file}.backup" "$file"
         return 1
     fi
 }
 
-# Update HTML files in docs directory
+# Update HTML files in docs directory that have coverage badges
 HTML_FILES=$(find "$DOCS_DIR" -name "*.html" -type f)
 
 if [ -z "$HTML_FILES" ]; then
     print_warning "No HTML files found in $DOCS_DIR"
 else
     for file in $HTML_FILES; do
-        update_html_file "$file"
+        # Only update files that have coverage badges
+        if grep -q "coverage.*%" "$file" || grep -q "<!-- COVERAGE_BADGE_START -->" "$file"; then
+            update_html_file "$file"
+        else
+            print_status "Skipping $file (no coverage badge found)"
+        fi
     done
 fi
 
