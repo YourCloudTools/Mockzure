@@ -40,7 +40,7 @@
 #### 2. Use of `eval` in Shell Scripts
 **Risk Level**: Medium  
 **Impact**: Command Injection  
-**File**: `scripts/prepare-docs.sh` (line 114)
+**File**: `bin/prepare-docs.sh` (line 114)
 
 **Issue**: The `run_command` function uses `eval "$cmd"` which could be vulnerable to command injection.
 
@@ -56,7 +56,7 @@
 #### 1. Temporary File Handling
 **Risk Level**: Low  
 **Impact**: Information Disclosure  
-**Files**: `scripts/update-coverage-badge.sh`
+**Files**: `bin/update-coverage-badge.sh`
 
 **Issue**: Scripts create temporary files (`.tmp`, `.backup`) that could potentially contain sensitive data.
 

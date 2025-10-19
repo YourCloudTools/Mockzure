@@ -1,7 +1,7 @@
 # Dockerfile for Mockzure
 
 # Development stage
-FROM golang:1.23-alpine AS development
+FROM golang:1.25-alpine AS development
 
 WORKDIR /app
 
@@ -25,7 +25,7 @@ EXPOSE 8090
 CMD ["sh", "-c", "go build -o /tmp/mockzure main.go && /tmp/mockzure"]
 
 # Production stage
-FROM golang:1.23-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 

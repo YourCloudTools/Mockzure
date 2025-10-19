@@ -202,10 +202,10 @@ if [ "$COVERAGE" = true ]; then
         print_status "Open coverage.html in your browser to view detailed coverage"
         
         # Update coverage badge if script exists
-        if [ -f "scripts/update-coverage-badge.sh" ]; then
+        if [ -f "bin/update-coverage-badge.sh" ]; then
             print_status "Updating coverage badge..."
-            chmod +x scripts/update-coverage-badge.sh
-            ./scripts/update-coverage-badge.sh --coverage-file coverage.out --docs-dir docs
+            chmod +x bin/update-coverage-badge.sh
+            ./bin/update-coverage-badge.sh --coverage-file coverage.out --docs-dir docs
         fi
     else
         print_error "Failed to generate coverage report"

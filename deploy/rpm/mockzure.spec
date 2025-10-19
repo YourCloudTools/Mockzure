@@ -9,7 +9,7 @@ Source0:        %{name}-%{version}.tar.gz
 BuildArch:      x86_64
 
 # Note: golang BuildRequires removed for cross-platform builds
-# Ensure Go 1.20+ is installed before building
+# Ensure Go 1.25+ is installed before building
 Requires:       systemd
 
 %description

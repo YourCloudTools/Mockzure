@@ -27,12 +27,12 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.25'
 
       - name: Download test coverage artifact
         uses: actions/download-artifact@v4
         with:
-          name: coverage-report-go-1.23
+          name: coverage-report-go-1.25
           path: ./
 
       - name: Verify coverage file exists
@@ -171,8 +171,8 @@ jobs:
 
       - name: Prepare documentation
         run: |
-          chmod +x scripts/prepare-docs.sh
-          ./scripts/prepare-docs.sh --coverage-file coverage.out --docs-dir docs
+          chmod +x bin/prepare-docs.sh
+          ./bin/prepare-docs.sh --coverage-file coverage.out --docs-dir docs
 
       - name: Generate repository metadata
         run: |

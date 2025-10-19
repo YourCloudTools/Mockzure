@@ -354,11 +354,14 @@ func generateMarkdownReport(report CompatibilityReport) string {
 		sb.WriteString("|----------|--------|-------------|--------|\n")
 
 		for _, endpoint := range category.Endpoints {
-			endpointStatus := "✅"
-			if category.SupportLevel == "PARTIAL" {
+			var endpointStatus string
+			switch category.SupportLevel {
+			case "PARTIAL":
 				endpointStatus = "⚠️"
-			} else if category.SupportLevel == "NOT_SUPPORTED" {
+			case "NOT_SUPPORTED":
 				endpointStatus = "❌"
+			default:
+				endpointStatus = "✅"
 			}
 
 			sb.WriteString(fmt.Sprintf("| `%s` | %s | %s | %s |\n",

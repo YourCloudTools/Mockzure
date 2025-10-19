@@ -41,7 +41,7 @@
 ## Security Fixes Applied
 
 ### 1. **Fixed Command Injection Vulnerability**
-**File**: `scripts/prepare-docs.sh`  
+**File**: `bin/prepare-docs.sh`  
 **Issue**: Use of `eval "$cmd"` could be vulnerable to command injection  
 **Fix**: Replaced with direct command execution using case statement  
 **Status**: ✅ **FIXED**

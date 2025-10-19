@@ -352,7 +352,11 @@ func TestAPIEndpointWithDifferentAuthTypes(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Request failed: %v", err)
 			}
-			defer resp.Body.Close()
+			defer func() {
+				if err := resp.Body.Close(); err != nil {
+					t.Logf("Warning: failed to close response body: %v", err)
+				}
+			}()
 
 			if resp.StatusCode != http.StatusOK {
 				t.Errorf("Expected status 200, got %d", resp.StatusCode)
