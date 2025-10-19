@@ -136,6 +136,11 @@ jobs:
           name: rpm-package
           path: ./artifacts
 
+      - name: Prepare documentation
+        run: |
+          chmod +x bin/prepare-docs.sh
+          ./bin/prepare-docs.sh --coverage-file coverage.out --docs-dir docs
+
       - name: Checkout gh-pages branch
         run: |
           git fetch origin gh-pages || git checkout --orphan gh-pages
@@ -170,10 +175,6 @@ jobs:
           ln -sf "$LATEST_RPM" mockzure-latest.rpm
           cd ..
 
-      - name: Prepare documentation
-        run: |
-          chmod +x bin/prepare-docs.sh
-          ./bin/prepare-docs.sh --coverage-file coverage.out --docs-dir docs
 
       - name: Generate repository metadata
         run: |
@@ -181,9 +182,9 @@ jobs:
           sudo apt-get install -y createrepo-c
           createrepo_c rpms/
 
-      - name: Generate index.html
+      - name: Generate RPM repository page
         run: |
-          cat > index.html << 'EOF'
+          cat > rpms/index.html << 'EOF'
           <!DOCTYPE html>
           <html lang="en">
           <head>
@@ -411,7 +412,7 @@ jobs:
                   // Fetch and display available packages
                   async function loadPackages() {
                       try {
-                          const response = await fetch('rpms/');
+                          const response = await fetch('./');
                           const text = await response.text();
                           const parser = new DOMParser();
                           const doc = parser.parseFromString(text, 'text/html');
@@ -445,7 +446,7 @@ jobs:
                               return `
                                   <li class="package-item">
                                       <span class="package-name">${label}</span>
-                                      <a href="rpms/${pkg}" class="download-btn" download>Download</a>
+                                      <a href="${pkg}" class="download-btn" download>Download</a>
                                   </li>
                               `;
                           }).join('');
