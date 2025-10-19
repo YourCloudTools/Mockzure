@@ -162,7 +162,9 @@ func TestServiceAccountVMFiltering(t *testing.T) {
 				"value": filteredVMs,
 				"count": len(filteredVMs),
 			}
-			json.NewEncoder(w).Encode(response)
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				t.Errorf("Failed to encode response: %v", err)
+			}
 
 			if w.Code != http.StatusOK {
 				t.Errorf("Expected status 200, got %d", w.Code)

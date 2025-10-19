@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture - Mockzure</title>
+    <meta name="description" content="Mockzure architecture overview - understand the system design, data models, and component interactions.">
+    <link rel="stylesheet" href="assets/style.css">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔵</text></svg>">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">🔵 Mockzure</a>
+            <nav class="nav">
+                <a href="index.html">Home</a>
+                <a href="getting-started.html">Getting Started</a>
+                <a href="api-reference.html">API Reference</a>
+                <a href="architecture.html">Architecture</a>
+                <a href="compatibility.html">Compatibility</a>
+                <a href="coverage.html">Coverage</a>
+                <a href="https://github.com/YourCloudTools/Mockzure" target="_blank">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="page-header">
+            <h1>Architecture</h1>
+            <p>Mockzure Enhanced v2.0 - System architecture, data models, and component interactions.</p>
+        </div>
+
+        <section>
+            <h2>System Overview</h2>
+            <p>Mockzure is a lightweight mock Azure service built with Go, providing a simulated Azure environment for development and testing. The system uses an in-memory data store and provides both a web portal and REST API endpoints.</p>
+
+            <div class="architecture-diagram">
+┌───────────────────────────────────────────────────────────────────────┐
+│                         WEB PORTAL (Port 8090)                        │
+│                        http://localhost:8090                          │
+└───────────────────────────────────────────────────────────────────────┘
+                                   │
+                                   ▼
+        ┌──────────────────────────────────────────────────┐
+        │              TABBED INTERFACE                    │
+        │  ┌──────────┬──────────────┬──────────────┐     │
+        │  │Resource  │  Entra ID    │  Settings    │     │
+        │  │Groups ✓  │              │              │     │
+        │  └──────────┴──────────────┴──────────────┘     │
+        └──────────────────────────────────────────────────┘
+                                   │
+         ┌─────────────────────────┼─────────────────────────┐
+         │                         │                         │
+         ▼                         ▼                         ▼
+
+╔════════════════════╗   ╔═══════════════════╗   ╔══════════════════╗
+║  RESOURCE GROUPS   ║   ║    ENTRA ID       ║   ║    SETTINGS      ║
+║                    ║   ║                   ║   ║                  ║
+║  📁 rg-dev         ║   ║  👥 Users         ║   ║  📊 Statistics   ║
+║  ├─ vm-web-01  ▶️  ║   ║  ├─ John Doe      ║   ║  ├─ Total VMs    ║
+║  └─ vm-api-01  ⏹️  ║   ║  ├─ Jane Smith    ║   ║  ├─ Running      ║
+║                    ║   ║  └─ Admin User    ║   ║  └─ Stopped      ║
+║  📁 rg-prod        ║   ║                   ║   ║                  ║
+║  └─ vm-web-prod ▶️ ║   ║  📱 App Regs      ║   ║  📋 Endpoints    ║
+║                    ║   ║  (Empty)          ║   ║  🔄 Reset Data   ║
+╚════════════════════╝   ╚═══════════════════╝   ╚══════════════════╝
+            </div>
+        </section>
+
+        <section>
+            <h2>Data Model Structure</h2>
+            <p>Mockzure uses an in-memory data store with the following structure:</p>
+
+            <div class="architecture-diagram">
+┌───────────────────────────────────────────────────────────────────────┐
+│                              STORE                                    │
+│  ┌─────────────────────────────────────────────────────────────────┐ │
+│  │  resourceGroups: []*ResourceGroup                               │ │
+│  │  vms:            []*MockVM                                       │ │
+│  │  users:          []*MockUser                                     │ │
+│  │  clients:        map[string]*RegisteredClient                    │ │
+│  │  codes:          map[string]*AuthCode                            │ │
+│  └─────────────────────────────────────────────────────────────────┘ │
+└───────────────────────────────────────────────────────────────────────┘
+           │                    │                  │
+           ▼                    ▼                  ▼
+    
+┌──────────────────┐   ┌──────────────┐   ┌───────────────────┐
+│ Resource Groups  │   │     VMs      │   │  Users (Entra ID) │
+├──────────────────┤   ├──────────────┤   ├───────────────────┤
+│ • rg-dev         │   │ • vm-web-01  │   │ • John Doe        │
+│   - East US      │   │ • vm-api-01  │   │ • Jane Smith      │
+│   - Dev env      │   │ • vm-web-    │   │ • Admin User      │
+│                  │   │   prod-01    │   │                   │
+│ • rg-prod        │   │              │   │ Roles:            │
+│   - West US      │   │ Status:      │   │ • Developer       │
+│   - Prod env     │   │ • Running    │   │ • DevOps          │
+└──────────────────┘   │ • Stopped    │   │ • Admin           │
+                       └──────────────┘   └───────────────────┘
+            </div>
+        </section>
+
+        <section>
+            <h2>API Endpoint Map</h2>
+            <p>Mockzure provides comprehensive API endpoints organized by service category:</p>
+
+            <h3>Resource Groups</h3>
+            <div class="architecture-diagram">
+┌─────────────────────────────────────────────────────────────┐
+│ GET  /mock/azure/resource-groups          → List all RGs    │
+│ GET  /mock/azure/resource-groups/{name}   → Get RG + VMs    │
+│ POST /mock/azure/resource-groups          → Create RG       │
+└─────────────────────────────────────────────────────────────┘
+            </div>
+
+            <h3>Virtual Machines</h3>
+            <div class="architecture-diagram">
+┌─────────────────────────────────────────────────────────────┐
+│ GET  /mock/azure/vms                      → List all VMs    │
+│ GET  /mock/azure/vms/{name}               → Get VM          │
+│ POST /mock/azure/vms                      → Create VM       │
+│ POST /mock/azure/vms/{name}/start         → Start VM        │
+│ POST /mock/azure/vms/{name}/stop          → Stop VM         │
+│ POST /mock/azure/vms/{name}/restart       → Restart VM      │
+│ POST /mock/azure/vms/{name}/tags          → Update tags     │
+└─────────────────────────────────────────────────────────────┘
+            </div>
+
+            <h3>Entra ID - Users</h3>
+            <div class="architecture-diagram">
+┌─────────────────────────────────────────────────────────────┐
+│ GET  /mock/azure/users                    → List users      │
+│ GET  /mock/azure/users/{id}               → Get user        │
+│ POST /mock/azure/users                    → Create user     │
+└─────────────────────────────────────────────────────────────┘
+            </div>
+
+            <h3>Entra ID - Apps</h3>
+            <div class="architecture-diagram">
+┌─────────────────────────────────────────────────────────────┐
+│ GET  /mock/azure/apps                     → List apps       │
+│ POST /mock/azure/apps                     → Register app    │
+└─────────────────────────────────────────────────────────────┘
+            </div>
+
+            <h3>OAuth2/OIDC</h3>
+            <div class="architecture-diagram">
+┌─────────────────────────────────────────────────────────────┐
+│ GET  /.well-known/openid-configuration   → Discovery        │
+│ GET  /oauth2/v2.0/authorize               → Auth code       │
+│ POST /oauth2/v2.0/token                   → Exchange token  │
+│ GET  /oidc/userinfo                       → User info       │
+└─────────────────────────────────────────────────────────────┘
+            </div>
+        </section>
+
+        <section>
+            <h2>Resource Organization</h2>
+            <p>Mockzure organizes resources into two main categories:</p>
+
+            <h3>Resource Group Managed (Compute Resources)</h3>
+            <div class="architecture-diagram">
+┌───────────────────────────────────────────────────────────────────────┐
+│                    RESOURCE GROUP MANAGED                             │
+│                      (Compute Resources)                              │
+│                                                                       │
+│  ┌─────────────────────┐         ┌─────────────────────┐            │
+│  │      rg-dev         │         │      rg-prod        │            │
+│  │    East US          │         │    West US          │            │
+│  ├─────────────────────┤         ├─────────────────────┤            │
+│  │ 💻 vm-web-01        │         │ 💻 vm-web-prod-01   │            │
+│  │    Running          │         │    Running          │            │
+│  │    Standard_B2s     │         │    Standard_D2s_v3  │            │
+│  │    Linux            │         │    Linux            │            │
+│  │                     │         │                     │            │
+│  │ 💻 vm-api-01        │         └─────────────────────┘            │
+│  │    Stopped          │                                            │
+│  │    Standard_B2s     │                                            │
+│  │    Linux            │                                            │
+│  └─────────────────────┘                                            │
+└───────────────────────────────────────────────────────────────────────┘
+            </div>
+
+            <h3>Global Resources (Entra ID)</h3>
+            <div class="architecture-diagram">
+┌───────────────────────────────────────────────────────────────────────┐
+│                  GLOBAL RESOURCES (Entra ID)                          │
+│                  (Not tied to resource groups)                        │
+│                                                                       │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  USERS                                                        │   │
+│  ├──────────────────────────────────────────────────────────────┤   │
+│  │  👤 John Doe          john.doe@company.com                    │   │
+│  │     Senior Developer                                          │   │
+│  │     Access: rg-dev                                            │   │
+│  │                                                               │   │
+│  │  👤 Jane Smith        jane.smith@company.com                  │   │
+│  │     DevOps Engineer                                           │   │
+│  │     Access: rg-dev, rg-prod                                   │   │
+│  │                                                               │   │
+│  │  👤 Admin User        admin@company.com                       │   │
+│  │     System Administrator                                      │   │
+│  │     Access: All resource groups                               │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                       │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  APP REGISTRATIONS (OAuth2/OIDC Clients)                      │   │
+│  ├──────────────────────────────────────────────────────────────┤   │
+│  │  (Initially empty - populated when apps register)             │   │
+│  │  • Sandman will register here when configured                 │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+└───────────────────────────────────────────────────────────────────────┘
+            </div>
+        </section>
+
+        <section>
+            <h2>UI Flow Diagram</h2>
+            <p>User interaction flow through the Mockzure portal:</p>
+
+            <div class="architecture-diagram">
+User Opens Browser
+        │
+        ▼
+http://localhost:8090
+        │
+        ▼
+┌───────────────────────────────────────────────────┐
+│              MOCKZURE PORTAL HEADER               │
+│  [🔵] Mockzure Portal                    :8090    │
+└───────────────────────────────────────────────────┘
+        │
+        ▼
+┌───────────────────────────────────────────────────┐
+│                    TAB BAR                        │
+│  [Resource Groups] [Entra ID] [Settings]         │
+└───────────────────────────────────────────────────┘
+        │
+        ├─[Tab 1]───────────> Resource Groups View
+        │                     • Show rg-dev
+        │                       ├─ vm-web-01 [Start] [Stop]
+        │                       └─ vm-api-01 [Start] [Stop]
+        │                     • Show rg-prod
+        │                       └─ vm-web-prod-01 [Start] [Stop]
+        │
+        ├─[Tab 2]───────────> Entra ID View
+        │                     • Users Table (3 users)
+        │                     • App Registrations (empty/populated)
+        │
+        └─[Tab 3]───────────> Settings View
+                              • Stats: 3 VMs, 2 Running, 1 Stopped
+                              • API Endpoints List
+                              • [Reset] [Clear] Buttons
+            </div>
+        </section>
+
+        <section>
+            <h2>Technology Stack</h2>
+            <div class="cards">
+                <div class="card">
+                    <h3>Backend</h3>
+                    <ul>
+                        <li><strong>Go (Golang)</strong> - Main language</li>
+                        <li><strong>net/http</strong> - HTTP server</li>
+                        <li><strong>encoding/json</strong> - JSON handling</li>
+                        <li><strong>In-memory data store</strong> - No database required</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3>Frontend</h3>
+                    <ul>
+                        <li><strong>HTML5</strong> - Semantic markup</li>
+                        <li><strong>Tailwind CSS</strong> - Styling framework</li>
+                        <li><strong>Vanilla JavaScript</strong> - Interactivity</li>
+                        <li><strong>No framework dependencies</strong> - Lightweight</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3>Design</h3>
+                    <ul>
+                        <li><strong>Purple/Blue gradient theme</strong> - Modern look</li>
+                        <li><strong>Responsive layout</strong> - Mobile-friendly</li>
+                        <li><strong>Card-based UI</strong> - Clean organization</li>
+                        <li><strong>Status indicators</strong> - Color-coded states</li>
+                    </ul>
+                </div>
+            </div>
+
+            <p><strong>Default Port:</strong> 8090</p>
+        </section>
+
+        <section>
+            <h2>Data Persistence</h2>
+            <p>Mockzure uses an in-memory data store with the following characteristics:</p>
+
+            <div class="cards">
+                <div class="card">
+                    <h3>✅ Advantages</h3>
+                    <ul>
+                        <li>Fast access and updates</li>
+                        <li>No database setup required</li>
+                        <li>Perfect for development/testing</li>
+                        <li>Easy to reset and clear data</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3>⚠️ Limitations</h3>
+                    <ul>
+                        <li>Data lost on restart</li>
+                        <li>Not suitable for production</li>
+                        <li>Single instance only</li>
+                        <li>No data persistence</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Authentication & Authorization</h2>
+            <p>Mockzure implements a simplified authentication and authorization system:</p>
+
+            <h3>Service Account Authentication</h3>
+            <ul>
+                <li>Basic authentication for service principals</li>
+                <li>Configuration via <code>config.json</code></li>
+                <li>Application ID and secret-based</li>
+            </ul>
+
+            <h3>OAuth2/OIDC Support</h3>
+            <ul>
+                <li>Full OIDC discovery endpoint</li>
+                <li>Authorization code flow</li>
+                <li>User selection UI for testing</li>
+                <li>Unsigned JWTs for development</li>
+            </ul>
+
+            <h3>Role-Based Access Control (RBAC)</h3>
+            <ul>
+                <li>User roles: Developer, DevOps, Admin</li>
+                <li>Resource group access control</li>
+                <li>Graph API permission enforcement</li>
+                <li>Scope-based authorization</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Integration Points</h2>
+            <p>Mockzure is designed to integrate with various tools and services:</p>
+
+            <div class="cards">
+                <div class="card">
+                    <h3>🔗 Sandman Integration</h3>
+                    <p>Primary integration target for local development and testing scenarios.</p>
+                </div>
+
+                <div class="card">
+                    <h3>🐳 Docker Support</h3>
+                    <p>Containerized deployment with Docker Compose for easy setup.</p>
+                </div>
+
+                <div class="card">
+                    <h3>📦 RPM Packages</h3>
+                    <p>Native installation on RHEL, Fedora, and Azure Linux systems.</p>
+                </div>
+
+                <div class="card">
+                    <h3>🔧 Azure CLI</h3>
+                    <p>ARM endpoint compatibility for Azure CLI integration.</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Development & Testing</h2>
+            <p>Mockzure is specifically designed for development and testing scenarios:</p>
+
+            <h3>Development Mode</h3>
+            <ul>
+                <li>Auto-reload with <code>./bin/dev.sh</code></li>
+                <li>Hot code mounting in Docker</li>
+                <li>Development-specific Docker targets</li>
+            </ul>
+
+            <h3>Testing Features</h3>
+            <ul>
+                <li>Reset to default data</li>
+                <li>Clear all data functionality</li>
+                <li>Sample data for quick testing</li>
+                <li>Coverage reporting</li>
+            </ul>
+
+            <h3>CI/CD Integration</h3>
+            <ul>
+                <li>GitHub Actions workflows</li>
+                <li>Automated RPM building</li>
+                <li>Multi-platform binary releases</li>
+                <li>GitHub Pages deployment</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2024 YourCloudTools. Part of the Sandman project.</p>
+        <p>
+            <a href="https://github.com/YourCloudTools/Mockzure">GitHub</a> |
+            <a href="https://yourcloudtools.com">YourCloudTools</a> |
+            <a href="https://github.com/YourCloudTools/Sandman">Sandman</a>
+        </p>
+    </footer>
+
+    <script src="assets/script.js"></script>
+</body>
+</html>
+

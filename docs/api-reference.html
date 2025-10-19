@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Reference - Mockzure</title>
+    <meta name="description" content="Complete API reference for Mockzure - all endpoints for resource management, user authentication, and OIDC/OAuth2 support.">
+    <link rel="stylesheet" href="assets/style.css">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔵</text></svg>">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">🔵 Mockzure</a>
+            <nav class="nav">
+                <a href="index.html">Home</a>
+                <a href="getting-started.html">Getting Started</a>
+                <a href="api-reference.html">API Reference</a>
+                <a href="architecture.html">Architecture</a>
+                <a href="compatibility.html">Compatibility</a>
+                <a href="coverage.html">Coverage</a>
+                <a href="https://github.com/YourCloudTools/Mockzure" target="_blank">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="page-header">
+            <h1>API Reference</h1>
+            <p>Complete reference for all Mockzure API endpoints. Mockzure provides Azure-compatible APIs for development and testing.</p>
+        </div>
+
+        <section>
+            <h2>Base URL</h2>
+            <p>All API endpoints are available at:</p>
+            <pre><code>http://localhost:8090</code></pre>
+        </section>
+
+        <section>
+            <h2>Authentication</h2>
+            <p>Mockzure supports service account authentication for API access:</p>
+            <ul>
+                <li><strong>Basic Authentication</strong> - For service principals</li>
+                <li><strong>OAuth2/OIDC</strong> - For user authentication flows</li>
+                <li><strong>Graph API Permissions</strong> - User.Read.All for user endpoints</li>
+            </ul>
+            
+            <div class="card">
+                <h3>⚠️ Development Only</h3>
+                <p>Mockzure uses unsigned JWTs for testing purposes only. Not suitable for production use.</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>Resource Groups</h2>
+            <p>Manage Azure resource groups and their associated resources.</p>
+
+            <h3>List All Resource Groups</h3>
+            <pre><code>GET /mock/azure/resource-groups</code></pre>
+            <p>Returns a list of all resource groups with their VMs.</p>
+
+            <h3>Get Specific Resource Group</h3>
+            <pre><code>GET /mock/azure/resource-groups/{name}</code></pre>
+            <p>Returns a specific resource group with its associated VMs.</p>
+
+            <h3>Create Resource Group</h3>
+            <pre><code>POST /mock/azure/resource-groups</code></pre>
+            <p>Creates a new resource group.</p>
+
+            <h4>Example Request</h4>
+            <pre><code>curl -X POST http://localhost:8090/mock/azure/resource-groups \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "rg-test",
+    "location": "East US",
+    "tags": {
+      "Environment": "Test"
+    }
+  }'</code></pre>
+        </section>
+
+        <section>
+            <h2>Virtual Machines</h2>
+            <p>Manage virtual machines within resource groups.</p>
+
+            <h3>List All VMs</h3>
+            <pre><code>GET /mock/azure/vms</code></pre>
+            <p>Returns a list of all virtual machines across all resource groups.</p>
+
+            <h3>Get Specific VM</h3>
+            <pre><code>GET /mock/azure/vms/{name}</code></pre>
+            <p>Returns details for a specific virtual machine.</p>
+
+            <h3>Get VM Status</h3>
+            <pre><code>GET /mock/azure/vms/{name}/status</code></pre>
+            <p>Returns the current power state of a virtual machine.</p>
+
+            <h3>Create VM</h3>
+            <pre><code>POST /mock/azure/vms</code></pre>
+            <p>Creates a new virtual machine.</p>
+
+            <h4>Example Request</h4>
+            <pre><code>curl -X POST http://localhost:8090/mock/azure/vms \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-dev/providers/Microsoft.Compute/virtualMachines/vm-test-01",
+    "name": "vm-test-01",
+    "resourceGroup": "rg-dev",
+    "location": "East US",
+    "vmSize": "Standard_B2s",
+    "osType": "linux",
+    "provisioningState": "Succeeded",
+    "powerState": "VM running",
+    "status": "running",
+    "tags": {
+      "Environment": "Development",
+      "Owner": "test@company.com"
+    },
+    "owner": "test@company.com",
+    "environment": "Development"
+  }'</code></pre>
+
+            <h3>Start VM</h3>
+            <pre><code>POST /mock/azure/vms/{name}/start</code></pre>
+            <p>Starts a stopped virtual machine.</p>
+
+            <h4>Example Request</h4>
+            <pre><code>curl -X POST http://localhost:8090/mock/azure/vms/vm-web-01/start</code></pre>
+
+            <h3>Stop VM</h3>
+            <pre><code>POST /mock/azure/vms/{name}/stop</code></pre>
+            <p>Stops a running virtual machine.</p>
+
+            <h3>Restart VM</h3>
+            <pre><code>POST /mock/azure/vms/{name}/restart</code></pre>
+            <p>Restarts a virtual machine.</p>
+
+            <h3>Update VM Tags</h3>
+            <pre><code>POST /mock/azure/vms/{name}/tags
+PUT /mock/azure/vms/{name}/tags</code></pre>
+            <p>Updates tags for a virtual machine.</p>
+        </section>
+
+        <section>
+            <h2>Users (Entra ID)</h2>
+            <p>Manage users in the Entra ID directory.</p>
+
+            <h3>List All Users</h3>
+            <pre><code>GET /mock/azure/users</code></pre>
+            <p>Returns a list of all users in the directory.</p>
+
+            <h3>Get Specific User</h3>
+            <pre><code>GET /mock/azure/users/{id}</code></pre>
+            <p>Returns details for a specific user.</p>
+
+            <h3>Create User</h3>
+            <pre><code>POST /mock/azure/users</code></pre>
+            <p>Creates a new user in the directory.</p>
+
+            <h4>Example Request</h4>
+            <pre><code>curl -X POST http://localhost:8090/mock/azure/users \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "12345678-1234-1234-1234-123456789004",
+    "displayName": "Test User",
+    "userPrincipalName": "test.user@company.com",
+    "mail": "test.user@company.com",
+    "jobTitle": "Tester",
+    "department": "QA",
+    "accountEnabled": true,
+    "roles": ["Tester"]
+  }'</code></pre>
+        </section>
+
+        <section>
+            <h2>App Registrations</h2>
+            <p>Manage OAuth2/OIDC application registrations.</p>
+
+            <h3>List All App Registrations</h3>
+            <pre><code>GET /mock/azure/apps</code></pre>
+            <p>Returns a list of all registered applications.</p>
+
+            <h3>Create App Registration</h3>
+            <pre><code>POST /mock/azure/apps</code></pre>
+            <p>Registers a new OAuth2/OIDC application.</p>
+        </section>
+
+        <section>
+            <h2>Statistics</h2>
+            <p>Get system statistics and information.</p>
+
+            <h3>Get System Statistics</h3>
+            <pre><code>GET /mock/azure/stats</code></pre>
+            <p>Returns system statistics including VM counts and status.</p>
+
+            <h4>Example Response</h4>
+            <pre><code>{
+  "totalVMs": 3,
+  "runningVMs": 2,
+  "stoppedVMs": 1,
+  "totalUsers": 3,
+  "totalApps": 0,
+  "resourceGroups": 2
+}</code></pre>
+        </section>
+
+        <section>
+            <h2>Data Management</h2>
+            <p>Manage Mockzure data and reset to defaults.</p>
+
+            <h3>Reset Data to Defaults</h3>
+            <pre><code>POST /mock/azure/data/reset</code></pre>
+            <p>Resets all data to the default sample data.</p>
+
+            <h3>Clear All Data</h3>
+            <pre><code>POST /mock/azure/data/clear</code></pre>
+            <p>Clears all data from the system.</p>
+        </section>
+
+        <section>
+            <h2>OIDC/OAuth2 Endpoints</h2>
+            <p>OpenID Connect and OAuth2 authentication endpoints.</p>
+
+            <h3>OIDC Discovery</h3>
+            <pre><code>GET /.well-known/openid-configuration</code></pre>
+            <p>Returns the OpenID Connect discovery document.</p>
+
+            <h3>Authorization Endpoint</h3>
+            <pre><code>GET /oauth2/v2.0/authorize</code></pre>
+            <p>Handles authorization code flow with user selection UI.</p>
+
+            <h3>Token Endpoint</h3>
+            <pre><code>POST /oauth2/v2.0/token</code></pre>
+            <p>Exchanges authorization codes for access tokens.</p>
+
+            <h3>User Info Endpoint</h3>
+            <pre><code>GET /oidc/userinfo</code></pre>
+            <p>Returns user information for authenticated users.</p>
+        </section>
+
+        <section>
+            <h2>Azure Resource Manager (ARM) Endpoints</h2>
+            <p>Full ARM compatibility for Azure CLI and SDK integration.</p>
+
+            <h3>List VMs (ARM Format)</h3>
+            <pre><code>GET /subscriptions/{subId}/resourceGroups/{rg}/providers/Microsoft.Compute/virtualMachines</code></pre>
+            <p>Returns VMs in ARM format for Azure CLI compatibility.</p>
+
+            <h3>Get VM (ARM Format)</h3>
+            <pre><code>GET /subscriptions/{subId}/resourceGroups/{rg}/providers/Microsoft.Compute/virtualMachines/{vmName}</code></pre>
+            <p>Returns VM details in ARM format.</p>
+
+            <h3>Get VM with Instance View</h3>
+            <pre><code>GET /subscriptions/{subId}/resourceGroups/{rg}/providers/Microsoft.Compute/virtualMachines/{vmName}?$expand=instanceView</code></pre>
+            <p>Returns VM with detailed instance view information.</p>
+        </section>
+
+        <section>
+            <h2>Response Formats</h2>
+            <p>All API responses are in JSON format with standard HTTP status codes.</p>
+
+            <h3>Success Response</h3>
+            <pre><code>HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "id": "vm-web-01",
+  "name": "vm-web-01",
+  "status": "running",
+  "resourceGroup": "rg-dev"
+}</code></pre>
+
+            <h3>Error Response</h3>
+            <pre><code>HTTP/1.1 404 Not Found
+Content-Type: application/json
+
+{
+  "error": "Resource not found",
+  "message": "VM 'vm-nonexistent' not found"
+}</code></pre>
+        </section>
+
+        <section>
+            <h2>Rate Limiting</h2>
+            <p>Mockzure does not implement rate limiting for development and testing purposes. In production scenarios, consider implementing appropriate rate limiting based on your needs.</p>
+        </section>
+
+        <section>
+            <h2>Examples</h2>
+            <p>Common usage examples for integrating with Mockzure.</p>
+
+            <h3>Getting Resource Group VMs</h3>
+            <pre><code>curl http://localhost:8090/mock/azure/resource-groups/rg-dev</code></pre>
+
+            <h3>Starting a VM</h3>
+            <pre><code>curl -X POST http://localhost:8090/mock/azure/vms/vm-web-01/start</code></pre>
+
+            <h3>Creating a User</h3>
+            <pre><code>curl -X POST http://localhost:8090/mock/azure/users \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "New User",
+    "userPrincipalName": "new.user@company.com",
+    "jobTitle": "Developer"
+  }'</code></pre>
+        </section>
+
+        <section>
+            <h2>Compatibility</h2>
+            <p>Mockzure provides 84.2% compatibility with Azure APIs across 19 endpoints. For detailed compatibility information, see the <a href="compatibility.html">Compatibility Report</a>.</p>
+
+            <div class="cards">
+                <div class="card">
+                    <h3>✅ Microsoft Identity Platform</h3>
+                    <p>Full OIDC/OAuth2 support with user selection UI</p>
+                </div>
+
+                <div class="card">
+                    <h3>⚠️ Microsoft Graph API</h3>
+                    <p>Requires proper Graph permissions (User.Read.All)</p>
+                </div>
+
+                <div class="card">
+                    <h3>✅ Azure Resource Manager</h3>
+                    <p>Full ARM compatibility with proper RBAC enforcement</p>
+                </div>
+
+                <div class="card">
+                    <h3>✅ RBAC & Authorization</h3>
+                    <p>Comprehensive RBAC with service account permissions</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2024 YourCloudTools. Part of the Sandman project.</p>
+        <p>
+            <a href="https://github.com/YourCloudTools/Mockzure">GitHub</a> |
+            <a href="https://yourcloudtools.com">YourCloudTools</a> |
+            <a href="https://github.com/YourCloudTools/Sandman">Sandman</a>
+        </p>
+    </footer>
+
+    <script src="assets/script.js"></script>
+</body>
+</html>
+

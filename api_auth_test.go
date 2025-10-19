@@ -102,7 +102,9 @@ func TestAdminUserAccessToVMs(t *testing.T) {
 			}
 
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(response)
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				t.Errorf("Failed to encode response: %v", err)
+			}
 
 			// Verify response code
 			if w.Code != http.StatusOK {
@@ -113,7 +115,9 @@ func TestAdminUserAccessToVMs(t *testing.T) {
 
 			// Parse response
 			var result map[string]interface{}
-			json.NewDecoder(w.Body).Decode(&result)
+			if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+				t.Errorf("Failed to decode response: %v", err)
+			}
 
 			t.Logf("Response: %d VMs returned", int(result["count"].(float64)))
 		})
@@ -304,10 +308,12 @@ func TestAPIEndpointWithDifferentAuthTypes(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"value": vms,
 			"count": len(vms),
-		})
+		}); err != nil {
+			t.Errorf("Failed to encode response: %v", err)
+		}
 	})
 
 	server := httptest.NewServer(mux)
@@ -353,7 +359,9 @@ func TestAPIEndpointWithDifferentAuthTypes(t *testing.T) {
 			}
 
 			var result map[string]interface{}
-			json.NewDecoder(resp.Body).Decode(&result)
+			if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+				t.Errorf("Failed to decode response: %v", err)
+			}
 
 			count := int(result["count"].(float64))
 			if count != tt.expectCount {

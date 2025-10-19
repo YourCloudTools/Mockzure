@@ -1,0 +1,113 @@
+name: Update Coverage Badge
+
+on:
+  workflow_run:
+    workflows: ["Test Suite"]
+    types: [completed]
+    branches: [main, develop]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-coverage-badge:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Download test coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report-go-1.23
+          path: ./
+
+      - name: Verify coverage file exists
+        run: |
+          if [ ! -f "coverage.out" ]; then
+            echo "Coverage file not found, generating fresh coverage..."
+            go test -coverprofile=coverage.out -covermode=atomic ./...
+          fi
+
+      - name: Update coverage badge
+        run: |
+          chmod +x scripts/update-coverage-badge.sh
+          ./scripts/update-coverage-badge.sh --coverage-file coverage.out --docs-dir docs
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add docs/index.html docs/coverage-summary.json
+          git commit -m "Update coverage badge to latest test results
+
+          - Updated coverage percentage in documentation
+          - Generated fresh coverage summary
+          - Automated update from CI/CD pipeline"
+          git push
+
+      - name: Create PR comment (if on PR)
+        if: github.event_name == 'pull_request' && steps.changes.outputs.changed == 'true'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const coverage = require('fs').readFileSync('docs/coverage-summary.json', 'utf8');
+            const data = JSON.parse(coverage);
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 📊 Coverage Update
+              
+              Coverage badge has been updated with latest test results:
+              
+              - **Total Coverage**: ${data.total_coverage}%
+              - **Functions**: ${data.total_functions} (${data.covered_functions} covered)
+              - **Badge Color**: ${data.badge_color}
+              
+              [View Coverage Report](https://yourcloudtools.github.io/Mockzure/coverage.html)`
+            });
+
+      - name: Summary
+        run: |
+          echo "## Coverage Badge Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "docs/coverage-summary.json" ]; then
+            coverage=$(jq -r '.total_coverage' docs/coverage-summary.json)
+            functions=$(jq -r '.total_functions' docs/coverage-summary.json)
+            covered=$(jq -r '.covered_functions' docs/coverage-summary.json)
+            color=$(jq -r '.badge_color' docs/coverage-summary.json)
+            
+            echo "✅ **Coverage Updated**: ${coverage}%" >> $GITHUB_STEP_SUMMARY
+            echo "📈 **Functions**: ${covered}/${functions} covered" >> $GITHUB_STEP_SUMMARY
+            echo "🎨 **Badge Color**: ${color}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Coverage Update Failed**: No coverage data found" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Files Updated" >> $GITHUB_STEP_SUMMARY
+          echo "- \`docs/index.html\` - Updated coverage badge" >> $GITHUB_STEP_SUMMARY
+          echo "- \`docs/coverage-summary.json\` - Generated coverage summary" >> $GITHUB_STEP_SUMMARY

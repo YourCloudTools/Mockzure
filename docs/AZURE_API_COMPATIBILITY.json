@@ -1,0 +1,167 @@
+{
+  "generated_at": "2025-10-16T12:56:43.930519+02:00",
+  "mockzure_version": "v1.0.0",
+  "summary": {
+    "total_endpoints": 19,
+    "supported_endpoints": 16,
+    "partial_support": 3,
+    "not_supported": 0,
+    "overall_score": 84.21052631578947
+  },
+  "categories": [
+    {
+      "name": "Microsoft Identity Platform (OIDC)",
+      "support_level": "FULL",
+      "endpoints": [
+        {
+          "path": "/.well-known/openid-configuration",
+          "method": "GET",
+          "support_level": "",
+          "description": "OIDC Discovery"
+        },
+        {
+          "path": "/common/v2.0/.well-known/openid-configuration",
+          "method": "GET",
+          "support_level": "",
+          "description": "Tenant-specific Discovery"
+        },
+        {
+          "path": "/oauth2/v2.0/authorize",
+          "method": "GET",
+          "support_level": "",
+          "description": "Authorization Code Flow"
+        },
+        {
+          "path": "/oauth2/v2.0/token",
+          "method": "POST",
+          "support_level": "",
+          "description": "Token Issuance (Client Credentials)"
+        },
+        {
+          "path": "/oauth2/v2.0/token",
+          "method": "POST",
+          "support_level": "",
+          "description": "Token Issuance (Authorization Code)"
+        },
+        {
+          "path": "/oidc/userinfo",
+          "method": "GET",
+          "support_level": "",
+          "description": "User Information"
+        }
+      ],
+      "notes": "Full OIDC/OAuth2 support with user selection UI. Uses unsigned JWTs for testing.",
+      "coverage": "6/6"
+    },
+    {
+      "name": "Microsoft Graph API",
+      "support_level": "PARTIAL",
+      "endpoints": [
+        {
+          "path": "/mock/azure/users",
+          "method": "GET",
+          "support_level": "",
+          "description": "List Users"
+        },
+        {
+          "path": "/mock/azure/users/{id}",
+          "method": "GET",
+          "support_level": "",
+          "description": "Get User"
+        },
+        {
+          "path": "/mock/azure/users",
+          "method": "POST",
+          "support_level": "",
+          "description": "Create User"
+        }
+      ],
+      "notes": "Requires proper Graph permissions (User.Read.All). Supports service account authentication.",
+      "coverage": "3/3"
+    },
+    {
+      "name": "Azure Resource Manager (ARM)",
+      "support_level": "FULL",
+      "endpoints": [
+        {
+          "path": "/subscriptions/{subId}/resourceGroups/{rg}/providers/Microsoft.Compute/virtualMachines",
+          "method": "GET",
+          "support_level": "",
+          "description": "List VMs (ARM format)"
+        },
+        {
+          "path": "/subscriptions/{subId}/resourceGroups/{rg}/providers/Microsoft.Compute/virtualMachines/{vmName}",
+          "method": "GET",
+          "support_level": "",
+          "description": "Get VM (ARM format)"
+        },
+        {
+          "path": "/subscriptions/{subId}/resourceGroups/{rg}/providers/Microsoft.Compute/virtualMachines/{vmName}?$expand=instanceView",
+          "method": "GET",
+          "support_level": "",
+          "description": "Get VM with Instance View"
+        },
+        {
+          "path": "/mock/azure/vms/{vmName}/start",
+          "method": "POST",
+          "support_level": "",
+          "description": "Start VM"
+        },
+        {
+          "path": "/mock/azure/vms/{vmName}/stop",
+          "method": "POST",
+          "support_level": "",
+          "description": "Stop VM"
+        },
+        {
+          "path": "/mock/azure/vms/{vmName}/restart",
+          "method": "POST",
+          "support_level": "",
+          "description": "Restart VM"
+        }
+      ],
+      "notes": "Full ARM compatibility with proper RBAC enforcement. Supports both ARM and simplified endpoints.",
+      "coverage": "6/6"
+    },
+    {
+      "name": "RBAC \u0026 Authorization",
+      "support_level": "FULL",
+      "endpoints": [
+        {
+          "path": "Service Account Authentication",
+          "method": "BASIC",
+          "support_level": "",
+          "description": "Basic Auth for Service Principals"
+        },
+        {
+          "path": "Graph API Permissions",
+          "method": "CHECK",
+          "support_level": "",
+          "description": "User.Read.All permission enforcement"
+        },
+        {
+          "path": "Resource Group Permissions",
+          "method": "CHECK",
+          "support_level": "",
+          "description": "Read/Write/Start/Stop permissions"
+        },
+        {
+          "path": "Role-based Access Control",
+          "method": "CHECK",
+          "support_level": "",
+          "description": "Scope-based authorization"
+        }
+      ],
+      "notes": "Comprehensive RBAC with service account permissions, Graph API scopes, and resource-level access control.",
+      "coverage": "4/4"
+    }
+  ],
+  "known_limitations": [
+    "Uses unsigned JWTs for testing (not suitable for production)",
+    "Simplified user roles compared to real Azure RBAC",
+    "Limited Graph API scope (only User.Read.All implemented)",
+    "No long-running operations (LRO) support",
+    "No Azure CLI integration",
+    "Mock data only - no persistence to real Azure"
+  ]
+}

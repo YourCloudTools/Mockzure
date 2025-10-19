@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Getting Started - Mockzure</title>
+    <meta name="description" content="Quick start guide for Mockzure - get up and running in minutes with Docker, RPM, or pre-built binaries.">
+    <link rel="stylesheet" href="assets/style.css">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔵</text></svg>">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <a href="index.html" class="logo">🔵 Mockzure</a>
+            <nav class="nav">
+                <a href="index.html">Home</a>
+                <a href="getting-started.html">Getting Started</a>
+                <a href="api-reference.html">API Reference</a>
+                <a href="architecture.html">Architecture</a>
+                <a href="compatibility.html">Compatibility</a>
+                <a href="coverage.html">Coverage</a>
+                <a href="https://github.com/YourCloudTools/Mockzure" target="_blank">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="page-header">
+            <h1>Getting Started</h1>
+            <p>Get Mockzure up and running in minutes. Choose your preferred installation method below.</p>
+        </div>
+
+        <section>
+            <h2>Prerequisites</h2>
+            <p>Before running Mockzure, ensure you have one of the following:</p>
+            <ul>
+                <li><strong>Docker and Docker Compose</strong> (recommended)</li>
+                <li><strong>Go 1.23+</strong> for building from source</li>
+                <li><strong>RHEL/Fedora/Azure Linux</strong> for RPM installation</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Configuration</h2>
+            <p>Before running Mockzure, create your configuration file:</p>
+            
+            <pre><code># Copy the example configuration
+cp config.json.example config.json
+
+# Edit the configuration with your service account credentials
+nano config.json  # or use your preferred editor</code></pre>
+
+            <p>The <code>config.json</code> file defines service account credentials for authentication. See the <a href="https://github.com/YourCloudTools/Mockzure/blob/main/docs/CONFIGURATION.md">Configuration Guide</a> for detailed documentation.</p>
+
+            <div class="card">
+                <h3>⚠️ Security Note</h3>
+                <p><code>config.json</code> is excluded from version control for security. Never commit actual secrets to the repository.</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>Installation Methods</h2>
+
+            <div class="cards">
+                <div class="card">
+                    <h3>🐳 Docker Compose (Recommended)</h3>
+                    <p>The easiest way to run Mockzure with automatic configuration mounting and container lifecycle management.</p>
+                    
+                    <h4>Quick Start</h4>
+                    <pre><code># 1. Ensure config.json exists
+cp config.json.example config.json
+
+# 2. Start Mockzure
+docker compose up -d
+
+# 3. View logs
+docker compose logs -f
+
+# 4. Stop Mockzure
+docker compose down</code></pre>
+
+                    <h4>Managing the Service</h4>
+                    <pre><code># Stop Mockzure
+docker compose stop
+
+# Start Mockzure
+docker compose start
+
+# Restart Mockzure (e.g., after config changes)
+docker compose restart
+
+# View real-time logs
+docker compose logs -f</code></pre>
+
+                    <h4>Using Local Build</h4>
+                    <p>To build from the local Dockerfile instead of pulling from GitHub Container Registry, edit <code>compose.yml</code>:</p>
+                    <pre><code>services:
+  mockzure:
+    # Comment out the image line
+    # image: ghcr.io/yourcloudtools/mockzure:latest
+    # Uncomment the build section
+    build:
+      context: .
+      target: production</code></pre>
+                    <p>Then run:</p>
+                    <pre><code>docker compose up -d --build</code></pre>
+                </div>
+
+                <div class="card">
+                    <h3>📦 RPM Package</h3>
+                    <p>Native installation for RHEL, Fedora, and Azure Linux systems through our GitHub Pages repository.</p>
+                    
+                    <h4>Add Repository</h4>
+                    <pre><code># Create repository configuration
+sudo tee /etc/yum.repos.d/mockzure.repo << 'EOF'
+[mockzure]
+name=Mockzure RPM Repository
+baseurl=https://yourcloudtools.github.io/Mockzure/rpms
+enabled=1
+gpgcheck=0
+EOF</code></pre>
+
+                    <h4>Install Package</h4>
+                    <pre><code># Install latest version
+sudo dnf install mockzure
+
+# Or install specific version
+sudo dnf install mockzure-20241011.143055
+
+# Or download and install directly
+curl -LO https://yourcloudtools.github.io/Mockzure/rpms/mockzure-latest.rpm
+sudo dnf install -y mockzure-latest.rpm</code></pre>
+
+                    <h4>Post-Installation</h4>
+                    <pre><code># Configure the service (optional)
+sudo nano /etc/mockzure/config.json
+
+# Enable and start the service
+sudo systemctl enable mockzure
+sudo systemctl start mockzure
+
+# Check status
+sudo systemctl status mockzure
+
+# View logs
+sudo journalctl -u mockzure -f</code></pre>
+
+                    <p>The RPM package installs:</p>
+                    <ul>
+                        <li>Binary: <code>/usr/bin/mockzure</code></li>
+                        <li>Configuration: <code>/etc/mockzure/config.json</code></li>
+                        <li>Systemd service: <code>/etc/systemd/system/mockzure.service</code></li>
+                        <li>Data directory: <code>/var/lib/mockzure/</code></li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3>💻 Pre-built Binaries</h3>
+                    <p>Download pre-built binaries from the <a href="https://github.com/YourCloudTools/Mockzure/releases">Releases page</a>.</p>
+                    
+                    <h4>Linux (amd64)</h4>
+                    <pre><code>wget https://github.com/YourCloudTools/Mockzure/releases/latest/download/mockzure-linux-amd64
+chmod +x mockzure-linux-amd64
+./mockzure-linux-amd64</code></pre>
+
+                    <h4>macOS (Apple Silicon)</h4>
+                    <pre><code>wget https://github.com/YourCloudTools/Mockzure/releases/latest/download/mockzure-darwin-arm64
+chmod +x mockzure-darwin-arm64
+./mockzure-darwin-arm64</code></pre>
+
+                    <h4>Windows</h4>
+                    <p>Download <code>mockzure-windows-amd64.exe</code> from the releases page.</p>
+
+                    <h4>Available Binaries</h4>
+                    <ul>
+                        <li><code>mockzure-linux-amd64</code> - Linux x86_64</li>
+                        <li><code>mockzure-linux-arm64</code> - Linux ARM64</li>
+                        <li><code>mockzure-darwin-amd64</code> - macOS Intel</li>
+                        <li><code>mockzure-darwin-arm64</code> - macOS Apple Silicon</li>
+                        <li><code>mockzure-windows-amd64.exe</code> - Windows x86_64</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3>🔨 Manual Build</h3>
+                    <p>For development or other platforms, build from source.</p>
+                    
+                    <h4>Build from Source</h4>
+                    <pre><code>cd Mockzure
+go build -o mockzure main.go
+./mockzure</code></pre>
+
+                    <h4>Development Mode</h4>
+                    <p>To run Mockzure in development mode with auto-reload:</p>
+                    <pre><code>./bin/dev.sh</code></pre>
+
+                    <h4>Development with Docker Compose</h4>
+                    <pre><code># Use the development target with live code mounting
+docker compose -f compose.dev.yml up
+
+# Or edit compose.yml to use the development stage
+# Change target: production to target: development</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Using the Web Portal</h2>
+            <p>Once Mockzure is running, open your browser and navigate to:</p>
+            <pre><code>http://localhost:8090</code></pre>
+
+            <p>You'll see three tabs:</p>
+            <ul>
+                <li><strong>Resource Groups</strong>: Manage VMs by resource group</li>
+                <li><strong>Entra ID</strong>: View users and app registrations</li>
+                <li><strong>Settings</strong>: Statistics and data management</li>
+            </ul>
+
+            <div class="card">
+                <h3>🎯 Quick Actions</h3>
+                <ul>
+                    <li>Click on VMs to see details and status</li>
+                    <li>Use Start/Stop buttons to control VM power state</li>
+                    <li>View user roles and permissions in the Entra ID tab</li>
+                    <li>Check system statistics in the Settings tab</li>
+                    <li>Use Reset/Clear buttons to restore default data</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>Docker Run (Alternative)</h2>
+            <p>If you prefer using <code>docker run</code> directly instead of Docker Compose:</p>
+
+            <h3>With Config File (Recommended)</h3>
+            <pre><code># Pull the image
+docker pull ghcr.io/yourcloudtools/mockzure:latest
+
+# Run with config.json mounted from current directory
+docker run -d \
+  --name mockzure \
+  -p 8090:8090 \
+  -v $(pwd)/config.json:/app/config.json:ro \
+  --restart unless-stopped \
+  ghcr.io/yourcloudtools/mockzure:latest
+
+# View logs
+docker logs -f mockzure
+
+# Stop container
+docker stop mockzure
+
+# Remove container
+docker rm mockzure</code></pre>
+
+            <h3>Without Config File (Uses Defaults)</h3>
+            <pre><code># Run without mounting config (will create default config)
+docker run -d \
+  --name mockzure \
+  -p 8090:8090 \
+  --restart unless-stopped \
+  ghcr.io/yourcloudtools/mockzure:latest</code></pre>
+
+            <h3>Run Specific Version</h3>
+            <pre><code># Run a specific tagged version
+docker run -d \
+  --name mockzure \
+  -p 8090:8090 \
+  -v $(pwd)/config.json:/app/config.json:ro \
+  ghcr.io/yourcloudtools/mockzure:v1.0.0</code></pre>
+        </section>
+
+        <section>
+            <h2>Next Steps</h2>
+            <div class="cards">
+                <div class="card">
+                    <h3>📚 API Reference</h3>
+                    <p>Learn about all available API endpoints for programmatic access.</p>
+                    <a href="api-reference.html" class="btn">View API Reference</a>
+                </div>
+
+                <div class="card">
+                    <h3>🏗️ Architecture</h3>
+                    <p>Understand how Mockzure is structured and how components interact.</p>
+                    <a href="architecture.html" class="btn">View Architecture</a>
+                </div>
+
+                <div class="card">
+                    <h3>🔗 Integration</h3>
+                    <p>Learn how to integrate Mockzure with Sandman and other tools.</p>
+                    <a href="https://github.com/YourCloudTools/Sandman" class="btn">View Sandman</a>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Troubleshooting</h2>
+            
+            <h3>Port Already in Use</h3>
+            <p>If port 8090 is already in use, you can change it by setting the PORT environment variable:</p>
+            <pre><code># Docker Compose
+PORT=8091 docker compose up -d
+
+# Docker Run
+docker run -d -p 8091:8090 -e PORT=8090 ...</code></pre>
+
+            <h3>Configuration Issues</h3>
+            <p>If you're having authentication issues:</p>
+            <ul>
+                <li>Verify your <code>config.json</code> file is valid JSON</li>
+                <li>Check that service account credentials are correct</li>
+                <li>Ensure Graph permissions are properly configured</li>
+            </ul>
+
+            <h3>Data Reset</h3>
+            <p>To reset Mockzure to default state:</p>
+            <ul>
+                <li>Use the "Reset to Defaults" button in the Settings tab</li>
+                <li>Or restart the container to clear in-memory data</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2024 YourCloudTools. Part of the Sandman project.</p>
+        <p>
+            <a href="https://github.com/YourCloudTools/Mockzure">GitHub</a> |
+            <a href="https://yourcloudtools.com">YourCloudTools</a> |
+            <a href="https://github.com/YourCloudTools/Sandman">Sandman</a>
+        </p>
+    </footer>
+
+    <script src="assets/script.js"></script>
+</body>
+</html>
+

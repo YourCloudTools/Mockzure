@@ -16,6 +16,9 @@ permissions:
 jobs:
   build-rpm:
     runs-on: ubuntu-latest
+    outputs:
+      coverage: ${{ steps.coverage.outputs.percentage }}
+      version: ${{ steps.version.outputs.VERSION }}
     
     steps:
       - name: Checkout code
@@ -25,6 +28,26 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
+
+      - name: Download test coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report-go-1.23
+          path: ./
+
+      - name: Verify coverage file exists
+        id: coverage
+        run: |
+          if [ ! -f "coverage.out" ]; then
+            echo "Coverage file not found, generating fresh coverage..."
+            go test -coverprofile=coverage.out -covermode=atomic ./...
+          fi
+          
+          # Extract coverage percentage
+          COVERAGE=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | sed 's/%//')
+          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
+          echo "percentage=$COVERAGE" >> $GITHUB_OUTPUT
+          echo "Coverage: $COVERAGE%"
 
       - name: Install RPM build tools
         run: |
@@ -90,18 +113,17 @@ jobs:
 
       - name: Attach RPM to release
         if: github.event_name == 'release'
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ${{ steps.rpm.outputs.RPM_FILE }}
-          asset_name: ${{ steps.rpm.outputs.RPM_NAME }}
-          asset_content_type: application/x-rpm
+          files: ${{ steps.rpm.outputs.RPM_FILE }}
 
   publish-to-pages:
     needs: build-rpm
     runs-on: ubuntu-latest
+    env:
+      COVERAGE: ${{ needs.build-rpm.outputs.coverage }}
     
     steps:
       - name: Checkout code
@@ -130,6 +152,11 @@ jobs:
             mv /tmp/rpms-backup/* rpms/ || true
             rmdir /tmp/rpms-backup
           fi
+          
+          # Copy documentation from docs directory
+          if [ -d "../docs" ]; then
+            cp -r ../docs/* .
+          fi
 
       - name: Copy new RPM to rpms directory
         run: |
@@ -141,6 +168,11 @@ jobs:
           LATEST_RPM=$(ls -t mockzure-*.rpm | head -n 1)
           ln -sf "$LATEST_RPM" mockzure-latest.rpm
           cd ..
+
+      - name: Prepare documentation
+        run: |
+          chmod +x scripts/prepare-docs.sh
+          ./scripts/prepare-docs.sh --coverage-file coverage.out --docs-dir docs
 
       - name: Generate repository metadata
         run: |
@@ -443,7 +475,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            VERSION="${{ needs.build-rpm.steps.version.outputs.VERSION }}"
+            VERSION="${{ needs.build-rpm.outputs.version }}"
             git commit -m "Publish RPM package version $VERSION"
             git push origin gh-pages
           fi
