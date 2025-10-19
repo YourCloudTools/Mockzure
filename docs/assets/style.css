@@ -53,6 +53,15 @@ body {
   font-weight: bold;
   text-decoration: none;
   color: white;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.logo img {
+  height: 40px;
+  width: auto;
+  border-radius: 0.25rem;
 }
 
 .nav {
@@ -360,6 +369,131 @@ tr:hover {
   margin-top: 4rem;
   text-align: center;
   color: var(--text-secondary);
+}
+
+/* API Status Section */
+.api-status-section {
+  background: var(--bg-secondary);
+  border-radius: 1rem;
+  padding: 2rem;
+  margin: 3rem 0;
+  border: 1px solid var(--border-color);
+}
+
+.api-status-section h2 {
+  color: var(--primary-color);
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.coverage-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+.coverage-badge {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+.coverage-badge h3 {
+  color: var(--primary-color);
+  margin-bottom: 0.5rem;
+  font-size: 1.125rem;
+}
+
+.coverage-badge .percentage {
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--success-color);
+}
+
+.coverage-badge .endpoints {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+/* Category Tables */
+.category-table {
+  background: var(--bg-primary);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  margin: 2rem 0;
+}
+
+.category-table h3 {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  color: white;
+  padding: 1rem 1.5rem;
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.category-table table {
+  margin: 0;
+  box-shadow: none;
+}
+
+.category-table th {
+  background: var(--bg-accent);
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-color);
+}
+
+.category-table td {
+  vertical-align: top;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+  min-width: 80px;
+}
+
+.status-badge.full {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.status-badge.partial {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.status-badge.not-yet {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+/* Responsive table adjustments */
+@media (max-width: 768px) {
+  .category-table {
+    overflow-x: auto;
+  }
+  
+  .category-table table {
+    min-width: 600px;
+  }
+  
+  .coverage-overview {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Utility classes */
