@@ -14,6 +14,7 @@ jobs:
   update-coverage-badge:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    needs: []
     
     steps:
       - name: Checkout code
@@ -31,6 +32,7 @@ jobs:
         with:
           name: coverage-report-go-1.25
           path: ./
+        continue-on-error: true
 
       - name: Verify coverage file exists
         run: |
