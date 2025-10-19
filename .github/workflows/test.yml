@@ -158,7 +158,8 @@ jobs:
       - name: Build Mockzure
         run: |
           go build -v -o mockzure main.go
-          ./mockzure --help || echo "Mockzure built successfully"
+          ./mockzure --help
+          echo "Mockzure built successfully"
 
       - name: Build report generator
         run: |

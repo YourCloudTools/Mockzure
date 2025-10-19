@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -1102,6 +1103,45 @@ func renderUserSelectionPage(w http.ResponseWriter, r *http.Request, clientID, r
 }
 
 func main() {
+	// Parse command line flags
+	var showHelp = flag.Bool("help", false, "Show help information")
+	var showVersion = flag.Bool("version", false, "Show version information")
+	flag.Parse()
+
+	// Handle help flag
+	if *showHelp {
+		fmt.Println("Mockzure - Azure API Mock Server")
+		fmt.Println("")
+		fmt.Println("Usage:")
+		fmt.Println("  mockzure [options]")
+		fmt.Println("")
+		fmt.Println("Options:")
+		fmt.Println("  --help     Show this help message")
+		fmt.Println("  --version  Show version information")
+		fmt.Println("")
+		fmt.Println("Description:")
+		fmt.Println("  Mockzure is a mock server that provides Azure-compatible APIs")
+		fmt.Println("  for testing and development purposes.")
+		fmt.Println("")
+		fmt.Println("  The server will start on port 8090 by default.")
+		fmt.Println("")
+		fmt.Println("Endpoints:")
+		fmt.Println("  GET  /mock/azure/vms           - List virtual machines")
+		fmt.Println("  POST /mock/azure/vms           - Create virtual machine")
+		fmt.Println("  GET  /mock/azure/users         - List users")
+		fmt.Println("  GET  /mock/azure/stats         - Get server statistics")
+		fmt.Println("  POST /mock/azure/data/clear    - Clear all mock data")
+		fmt.Println("  POST /mock/azure/data/reset    - Reset to default data")
+		os.Exit(0)
+	}
+
+	// Handle version flag
+	if *showVersion {
+		fmt.Println("Mockzure v1.0.0")
+		fmt.Println("Azure API Mock Server")
+		os.Exit(0)
+	}
+
 	store := &Store{}
 	store.init()
 

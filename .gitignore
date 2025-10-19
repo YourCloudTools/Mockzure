@@ -10,3 +10,4 @@ mockzure
 data/
 logs/
 gosec.sarif
+generate-report
