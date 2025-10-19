@@ -146,6 +146,9 @@ jobs:
           # Fetch all branches including gh-pages
           git fetch origin
           
+          # Stash any uncommitted changes to avoid checkout conflicts
+          git stash push -m "Temporary stash before gh-pages checkout" || true
+          
           # Check if gh-pages branch exists remotely
           if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
             # Branch exists, checkout and reset to origin
