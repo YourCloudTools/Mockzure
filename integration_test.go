@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -242,7 +243,9 @@ func TestMainFunctionIntegration(t *testing.T) {
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/html")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("<html><body>Test</body></html>"))
+			if _, err := w.Write([]byte("<html><body>Test</body></html>")); err != nil {
+				log.Printf("Failed to write response: %v", err)
+			}
 		})
 
 		// Test a complete request cycle

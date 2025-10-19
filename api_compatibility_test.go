@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -470,7 +471,9 @@ func setupMockzureHandlers(mux *http.ServeMux, store *Store) {
 			"scopes_supported":                      []string{"openid", "profile", "email", "User.Read"},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(doc)
+		if err := json.NewEncoder(w).Encode(doc); err != nil {
+			log.Printf("Failed to encode JSON response: %v", err)
+		}
 	})
 
 	mux.HandleFunc("/common/v2.0/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
@@ -486,7 +489,9 @@ func setupMockzureHandlers(mux *http.ServeMux, store *Store) {
 			"scopes_supported":                      []string{"openid", "profile", "email", "User.Read"},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(doc)
+		if err := json.NewEncoder(w).Encode(doc); err != nil {
+			log.Printf("Failed to encode JSON response: %v", err)
+		}
 	})
 
 	// Authorization endpoint
@@ -545,7 +550,9 @@ func setupMockzureHandlers(mux *http.ServeMux, store *Store) {
 				"expires_in":   3600,
 			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(token)
+			if err := json.NewEncoder(w).Encode(token); err != nil {
+				log.Printf("Failed to encode JSON response: %v", err)
+			}
 			return
 		}
 
@@ -577,7 +584,9 @@ func setupMockzureHandlers(mux *http.ServeMux, store *Store) {
 
 		if r.Method == http.MethodGet {
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{"value": store.users, "count": len(store.users)})
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{"value": store.users, "count": len(store.users)}); err != nil {
+				log.Printf("Failed to encode JSON response: %v", err)
+			}
 		}
 	})
 
@@ -600,7 +609,9 @@ func setupMockzureHandlers(mux *http.ServeMux, store *Store) {
 			}
 
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{"value": vms, "count": len(vms)})
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{"value": vms, "count": len(vms)}); err != nil {
+				log.Printf("Failed to encode JSON response: %v", err)
+			}
 		}
 	})
 
@@ -637,7 +648,9 @@ func setupMockzureHandlers(mux *http.ServeMux, store *Store) {
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(vm)
+			if err := json.NewEncoder(w).Encode(vm); err != nil {
+				log.Printf("Failed to encode JSON response: %v", err)
+			}
 		} else if r.Method == http.MethodPost && len(parts) > 1 {
 			operation := parts[1]
 
@@ -653,19 +666,25 @@ func setupMockzureHandlers(mux *http.ServeMux, store *Store) {
 				vm.PowerState = "VM running"
 				vm.LastUpdated = time.Now()
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(map[string]interface{}{"message": fmt.Sprintf("VM %s started successfully", vmName), "status": "success"})
+				if err := json.NewEncoder(w).Encode(map[string]interface{}{"message": fmt.Sprintf("VM %s started successfully", vmName), "status": "success"}); err != nil {
+					log.Printf("Failed to encode JSON response: %v", err)
+				}
 			case "stop":
 				vm.Status = "stopped"
 				vm.PowerState = "VM deallocated"
 				vm.LastUpdated = time.Now()
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(map[string]interface{}{"message": fmt.Sprintf("VM %s stopped successfully", vmName), "status": "success"})
+				if err := json.NewEncoder(w).Encode(map[string]interface{}{"message": fmt.Sprintf("VM %s stopped successfully", vmName), "status": "success"}); err != nil {
+					log.Printf("Failed to encode JSON response: %v", err)
+				}
 			case "restart":
 				vm.Status = "running"
 				vm.PowerState = "VM running"
 				vm.LastUpdated = time.Now()
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(map[string]interface{}{"message": fmt.Sprintf("VM %s restarted successfully", vmName), "status": "success"})
+				if err := json.NewEncoder(w).Encode(map[string]interface{}{"message": fmt.Sprintf("VM %s restarted successfully", vmName), "status": "success"}); err != nil {
+					log.Printf("Failed to encode JSON response: %v", err)
+				}
 			default:
 				http.Error(w, "Unknown operation", http.StatusBadRequest)
 			}
@@ -731,14 +750,16 @@ func setupMockzureHandlers(mux *http.ServeMux, store *Store) {
 						}
 
 						w.Header().Set("Content-Type", "application/json")
-						json.NewEncoder(w).Encode(map[string]interface{}{
+						if err := json.NewEncoder(w).Encode(map[string]interface{}{
 							"id":         vm.ID,
 							"name":       vm.Name,
 							"type":       "Microsoft.Compute/virtualMachines",
 							"location":   vm.Location,
 							"properties": properties,
 							"tags":       vm.Tags,
-						})
+						}); err != nil {
+							log.Printf("Failed to encode JSON response: %v", err)
+						}
 						return
 					}
 				}
@@ -801,9 +822,11 @@ func setupMockzureHandlers(mux *http.ServeMux, store *Store) {
 			}
 
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{
 				"value": filteredVMs,
-			})
+			}); err != nil {
+				log.Printf("Failed to encode JSON response: %v", err)
+			}
 			return
 		}
 
