@@ -119,8 +119,8 @@ run_command() {
             "go tool cover"*)
                 go tool cover -html="$COVERAGE_FILE" -o "${DOCS_DIR}/coverage.html"
                 ;;
-            "scripts/update-coverage-badge.sh"*)
-                ./scripts/update-coverage-badge.sh --coverage-file "$COVERAGE_FILE" --docs-dir "$DOCS_DIR"
+            "bin/update-coverage-badge.sh"*)
+                ./bin/update-coverage-badge.sh --coverage-file "$COVERAGE_FILE" --docs-dir "$DOCS_DIR"
                 ;;
             "go run"*)
                 go run cmd/generate_compatibility_report/main.go
@@ -147,8 +147,8 @@ if [ "$SKIP_COVERAGE" = false ]; then
     run_command "go tool cover -html=$COVERAGE_FILE -o ${DOCS_DIR}/coverage.html" "Generating HTML coverage report"
     
     # Update coverage badge
-    if [ -f "scripts/update-coverage-badge.sh" ]; then
-        run_command "scripts/update-coverage-badge.sh --coverage-file $COVERAGE_FILE --docs-dir $DOCS_DIR" "Updating coverage badges"
+    if [ -f "bin/update-coverage-badge.sh" ]; then
+        run_command "bin/update-coverage-badge.sh --coverage-file $COVERAGE_FILE --docs-dir $DOCS_DIR" "Updating coverage badges"
     else
         print_warning "Coverage badge update script not found"
     fi

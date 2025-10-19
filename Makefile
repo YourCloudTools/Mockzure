@@ -39,32 +39,32 @@ build:
 # Run all tests
 test:
 	@echo "🧪 Running all tests..."
-	./test.sh all
+	./bin/test.sh all
 
 # Run unit tests only
 test-unit:
 	@echo "🧪 Running unit tests..."
-	./test.sh unit
+	./bin/test.sh unit
 
 # Run integration tests only
 test-integration:
 	@echo "🧪 Running integration tests..."
-	./test.sh integration
+	./bin/test.sh integration
 
 # Run compatibility tests only
 test-compatibility:
 	@echo "🧪 Running compatibility tests..."
-	./test.sh compatibility
+	./bin/test.sh compatibility
 
 # Run all tests with coverage
 test-all:
 	@echo "🧪 Running all tests with coverage..."
-	./test.sh all --coverage
+	./bin/test.sh all --coverage
 
 # Generate comprehensive coverage report
 coverage:
 	@echo "📊 Generating coverage report..."
-	./test.sh all --coverage
+	./bin/test.sh all --coverage
 	@echo "📈 Coverage report generated: coverage.html"
 	@echo "📈 Coverage summary:"
 	@go tool cover -func=coverage.out | tail -1
@@ -108,9 +108,9 @@ format:
 # Generate documentation
 docs:
 	@echo "📚 Generating documentation..."
-	@if [ -f "scripts/prepare-docs.sh" ]; then \
-		chmod +x scripts/prepare-docs.sh; \
-		./scripts/prepare-docs.sh; \
+	@if [ -f "bin/prepare-docs.sh" ]; then \
+		chmod +x bin/prepare-docs.sh; \
+		./bin/prepare-docs.sh; \
 	else \
 		echo "⚠️  Documentation preparation script not found"; \
 	fi
@@ -160,9 +160,9 @@ docker-stop:
 # Update coverage badge
 update-badge:
 	@echo "🏷️  Updating coverage badge..."
-	@if [ -f "scripts/update-coverage-badge.sh" ]; then \
-		chmod +x scripts/update-coverage-badge.sh; \
-		./scripts/update-coverage-badge.sh; \
+	@if [ -f "bin/update-coverage-badge.sh" ]; then \
+		chmod +x bin/update-coverage-badge.sh; \
+		./bin/update-coverage-badge.sh; \
 	else \
 		echo "⚠️  Coverage badge update script not found"; \
 	fi

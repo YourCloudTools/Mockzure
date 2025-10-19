@@ -1,6 +1,6 @@
 # Azure API Compatibility Report
 
-**Generated:** 2025-10-16 12:56:43 UTC
+**Generated:** 2025-10-19 12:38:49 UTC
 **Mockzure Version:** v1.0.0
 
 ## Executive Summary

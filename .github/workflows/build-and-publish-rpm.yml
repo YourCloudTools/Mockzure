@@ -171,8 +171,8 @@ jobs:
 
       - name: Prepare documentation
         run: |
-          chmod +x scripts/prepare-docs.sh
-          ./scripts/prepare-docs.sh --coverage-file coverage.out --docs-dir docs
+          chmod +x bin/prepare-docs.sh
+          ./bin/prepare-docs.sh --coverage-file coverage.out --docs-dir docs
 
       - name: Generate repository metadata
         run: |

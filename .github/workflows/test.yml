@@ -14,18 +14,16 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
-    strategy:
-      matrix:
-        go-version: ['1.24', '1.25']
+    # Single Go version - no matrix needed
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Go ${{ matrix.go-version }}
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: '1.25'
 
       - name: Cache Go modules
         uses: actions/cache@v3
@@ -44,13 +42,12 @@ jobs:
         run: go mod verify
 
       - name: Run test script
-        run: ./test.sh
+        run: ./bin/test.sh
 
       - name: Run compatibility tests with coverage
-        run: ./test.sh --coverage
+        run: ./bin/test.sh --coverage
 
       - name: Generate comprehensive coverage report
-        if: matrix.go-version == '1.25'
         run: |
           # Generate coverage for all packages
           go test -coverprofile=coverage.out -covermode=atomic ./...
@@ -67,9 +64,8 @@ jobs:
 
       - name: Upload test coverage
         uses: actions/upload-artifact@v4
-        if: matrix.go-version == '1.25'
         with:
-          name: coverage-report-go-${{ matrix.go-version }}
+          name: coverage-report-go-1.25
           path: |
             coverage.out
             coverage.html
