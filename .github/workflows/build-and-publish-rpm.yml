@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       coverage: ${{ steps.coverage.outputs.percentage }}
+      version: ${{ steps.version.outputs.VERSION }}
     
     steps:
       - name: Checkout code
@@ -474,7 +475,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            VERSION="${{ needs.build-rpm.steps.version.outputs.VERSION }}"
+            VERSION="${{ needs.build-rpm.outputs.version }}"
             git commit -m "Publish RPM package version $VERSION"
             git push origin gh-pages
           fi

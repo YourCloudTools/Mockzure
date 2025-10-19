@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -12,6 +11,12 @@ import (
 	"strings"
 	"time"
 )
+
+// Helper function to encode JSON with error handling
+func encodeJSON(w http.ResponseWriter, data interface{}) error {
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(data)
+}
 
 // Lightweight replicas of types and behavior from Sandman's internal mock
 
@@ -371,15 +376,22 @@ func (s *Store) loadConfig() {
 				},
 			},
 		}
-		data, _ := json.MarshalIndent(defaultConfig, "", "  ")
-		ioutil.WriteFile(configPath, data, 0600)
+		data, err := json.MarshalIndent(defaultConfig, "", "  ")
+		if err != nil {
+			log.Printf("Failed to marshal config: %v", err)
+			return
+		}
+		if err := os.WriteFile(configPath, data, 0600); err != nil {
+			log.Printf("Failed to write config file: %v", err)
+			return
+		}
 		s.config = defaultConfig
 		log.Printf("Created default config file: %s", configPath)
 		return
 	}
 
 	// Load existing config
-	data, err := ioutil.ReadFile(configPath)
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		log.Printf("Failed to read config file: %v", err)
 		s.config = &ServiceAccountConfig{}
@@ -929,7 +941,9 @@ func renderPortalPage(w http.ResponseWriter, store *Store) {
 </body>
 </html>`, len(store.vms), running, stopped)
 
-	w.Write([]byte(html))
+	if _, err := w.Write([]byte(html)); err != nil {
+		log.Printf("Failed to write HTML response: %v", err)
+	}
 }
 
 func renderUserSelectionPage(w http.ResponseWriter, r *http.Request, clientID, redirectURI, state, responseType, scope string, store *Store) {
@@ -1082,7 +1096,9 @@ func renderUserSelectionPage(w http.ResponseWriter, r *http.Request, clientID, r
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(html))
+	if _, err := w.Write([]byte(html)); err != nil {
+		log.Printf("Failed to write HTML response: %v", err)
+	}
 }
 
 func main() {
@@ -1104,8 +1120,11 @@ func main() {
 			"id_token_signing_alg_values_supported": []string{"none"},
 			"scopes_supported":                      []string{"openid", "profile", "email", "User.Read"},
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(doc)
+		if err := encodeJSON(w, doc); err != nil {
+			log.Printf("Failed to encode OIDC discovery document: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// OIDC Discovery endpoints (both root and tenant-specific)
@@ -1138,9 +1157,12 @@ func main() {
 				c.Scopes = []string{"openid", "profile", "email"}
 			}
 			store.clients[c.ClientID] = &c
-			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(c)
+			if err := encodeJSON(w, c); err != nil {
+				log.Printf("Failed to encode client response: %v", err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}

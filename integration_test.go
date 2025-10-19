@@ -80,9 +80,7 @@ func TestMainFunctionIntegration(t *testing.T) {
 		}
 
 		// Test server creation (don't start it)
-		if server == nil {
-			t.Error("Server should be created")
-		}
+		t.Logf("Server created successfully on port %s", server.Addr)
 	})
 
 	t.Run("handler components", func(t *testing.T) {
@@ -156,7 +154,9 @@ func TestMainFunctionIntegration(t *testing.T) {
 
 		// Start server in background
 		go func() {
-			server.ListenAndServe()
+			if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				t.Errorf("Server failed to start: %v", err)
+			}
 		}()
 
 		// Give server time to start
@@ -218,11 +218,7 @@ func TestMainFunctionIntegration(t *testing.T) {
 
 	t.Run("error handling paths", func(t *testing.T) {
 		// Test error handling that main might encounter
-		var nilStore *Store
-		if nilStore != nil {
-			// This won't execute, but covers the nil check path
-			nilStore.init()
-		}
+		t.Log("Testing error handling paths")
 
 		// Test with malformed requests
 		store := &Store{}
