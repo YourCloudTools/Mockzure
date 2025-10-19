@@ -14,43 +14,43 @@ import (
 
 // CompatibilityReport represents the overall compatibility report
 type CompatibilityReport struct {
-	GeneratedAt     time.Time              `json:"generated_at"`
-	MockzureVersion string                 `json:"mockzure_version"`
-	Summary         CompatibilitySummary   `json:"summary"`
-	Categories      []APICategory          `json:"categories"`
-	KnownLimitations []string              `json:"known_limitations"`
+	GeneratedAt      time.Time            `json:"generated_at"`
+	MockzureVersion  string               `json:"mockzure_version"`
+	Summary          CompatibilitySummary `json:"summary"`
+	Categories       []APICategory        `json:"categories"`
+	KnownLimitations []string             `json:"known_limitations"`
 }
 
 // CompatibilitySummary provides high-level overview
 type CompatibilitySummary struct {
-	TotalEndpoints    int     `json:"total_endpoints"`
-	SupportedEndpoints int    `json:"supported_endpoints"`
-	PartialSupport    int     `json:"partial_support"`
-	NotSupported      int     `json:"not_supported"`
-	OverallScore      float64 `json:"overall_score"`
+	TotalEndpoints     int     `json:"total_endpoints"`
+	SupportedEndpoints int     `json:"supported_endpoints"`
+	PartialSupport     int     `json:"partial_support"`
+	NotSupported       int     `json:"not_supported"`
+	OverallScore       float64 `json:"overall_score"`
 }
 
 // APICategory represents a major API category
 type APICategory struct {
-	Name        string `json:"name"`
-	SupportLevel string `json:"support_level"` // "FULL", "PARTIAL", "NOT_SUPPORTED"
-	Endpoints   []APIEndpoint `json:"endpoints"`
-	Notes       string `json:"notes"`
-	Coverage    string `json:"coverage"` // e.g., "8/8", "3/4"
+	Name         string        `json:"name"`
+	SupportLevel string        `json:"support_level"` // "FULL", "PARTIAL", "NOT_SUPPORTED"
+	Endpoints    []APIEndpoint `json:"endpoints"`
+	Notes        string        `json:"notes"`
+	Coverage     string        `json:"coverage"` // e.g., "8/8", "3/4"
 }
 
 // APIEndpoint represents an individual API endpoint
 type APIEndpoint struct {
-	Path        string `json:"path"`
-	Method      string `json:"method"`
+	Path         string `json:"path"`
+	Method       string `json:"method"`
 	SupportLevel string `json:"support_level"`
-	Description string `json:"description"`
-	Notes       string `json:"notes,omitempty"`
+	Description  string `json:"description"`
+	Notes        string `json:"notes,omitempty"`
 }
 
 func main() {
 	fmt.Println("🔍 Generating Azure API Compatibility Report for Mockzure...")
-	
+
 	// Run the compatibility tests
 	fmt.Println("📋 Running compatibility tests...")
 	testResults, err := runCompatibilityTests()
@@ -61,10 +61,10 @@ func main() {
 
 	// Generate the report
 	report := generateReport(testResults)
-	
+
 	// Write markdown report
 	markdownReport := generateMarkdownReport(report)
-	err = os.WriteFile("docs/AZURE_API_COMPATIBILITY.md", []byte(markdownReport), 0644)
+	err = os.WriteFile("docs/AZURE_API_COMPATIBILITY.md", []byte(markdownReport), 0600)
 	if err != nil {
 		fmt.Printf("❌ Error writing markdown report: %v\n", err)
 		os.Exit(1)
@@ -76,8 +76,8 @@ func main() {
 		fmt.Printf("❌ Error marshaling JSON report: %v\n", err)
 		os.Exit(1)
 	}
-	
-	err = os.WriteFile("docs/AZURE_API_COMPATIBILITY.json", jsonReport, 0644)
+
+	err = os.WriteFile("docs/AZURE_API_COMPATIBILITY.json", jsonReport, 0600)
 	if err != nil {
 		fmt.Printf("❌ Error writing JSON report: %v\n", err)
 		os.Exit(1)
@@ -101,7 +101,7 @@ func runCompatibilityTests() (map[string]bool, error) {
 	// Parse test output to determine what passed/failed
 	results := make(map[string]bool)
 	lines := strings.Split(string(output), "\n")
-	
+
 	for _, line := range lines {
 		if strings.Contains(line, "=== RUN") {
 			testName := strings.TrimPrefix(line, "=== RUN ")
@@ -124,7 +124,7 @@ func runCompatibilityTests() (map[string]bool, error) {
 // generateReport creates the compatibility report based on test results
 func generateReport(testResults map[string]bool) CompatibilityReport {
 	now := time.Now()
-	
+
 	// Define API categories with their endpoints
 	categories := []APICategory{
 		{
@@ -175,7 +175,7 @@ func generateReport(testResults map[string]bool) CompatibilityReport {
 	// Determine support levels based on test results and known implementation
 	for i, category := range categories {
 		supportedCount := 0
-		
+
 		switch category.Name {
 		case "Microsoft Identity Platform (OIDC)":
 			// Check if OIDC tests passed
@@ -194,7 +194,7 @@ func generateReport(testResults map[string]bool) CompatibilityReport {
 			}
 			categories[i].SupportLevel = "FULL"
 			categories[i].Coverage = fmt.Sprintf("%d/%d", len(category.Endpoints), len(category.Endpoints))
-			
+
 		case "Microsoft Graph API":
 			// Check Graph API tests
 			graphTests := []string{
@@ -209,7 +209,7 @@ func generateReport(testResults map[string]bool) CompatibilityReport {
 			}
 			categories[i].SupportLevel = "PARTIAL"
 			categories[i].Coverage = fmt.Sprintf("%d/%d", len(category.Endpoints), len(category.Endpoints))
-			
+
 		case "Azure Resource Manager (ARM)":
 			// Check ARM tests
 			armTests := []string{
@@ -226,7 +226,7 @@ func generateReport(testResults map[string]bool) CompatibilityReport {
 			}
 			categories[i].SupportLevel = "FULL"
 			categories[i].Coverage = fmt.Sprintf("%d/%d", len(category.Endpoints), len(category.Endpoints))
-			
+
 		case "RBAC & Authorization":
 			// Check RBAC tests
 			rbacTests := []string{
@@ -279,7 +279,7 @@ func generateReport(testResults map[string]bool) CompatibilityReport {
 	}
 
 	return CompatibilityReport{
-		GeneratedAt: now,
+		GeneratedAt:     now,
 		MockzureVersion: "v1.0.0", // Could be read from version file
 		Summary: CompatibilitySummary{
 			TotalEndpoints:     totalEndpoints,
@@ -288,7 +288,7 @@ func generateReport(testResults map[string]bool) CompatibilityReport {
 			NotSupported:       notSupported,
 			OverallScore:       overallScore,
 		},
-		Categories: categories,
+		Categories:       categories,
 		KnownLimitations: knownLimitations,
 	}
 }
@@ -296,23 +296,23 @@ func generateReport(testResults map[string]bool) CompatibilityReport {
 // generateMarkdownReport creates a markdown version of the report
 func generateMarkdownReport(report CompatibilityReport) string {
 	var sb strings.Builder
-	
+
 	// Header
 	sb.WriteString("# Azure API Compatibility Report\n\n")
 	sb.WriteString(fmt.Sprintf("**Generated:** %s\n", report.GeneratedAt.Format("2006-01-02 15:04:05 UTC")))
 	sb.WriteString(fmt.Sprintf("**Mockzure Version:** %s\n\n", report.MockzureVersion))
-	
+
 	// Executive Summary
 	sb.WriteString("## Executive Summary\n\n")
 	sb.WriteString("Mockzure provides comprehensive compatibility with Azure APIs for development and testing scenarios. ")
-	sb.WriteString(fmt.Sprintf("Overall compatibility score: **%.1f%%** (%d/%d endpoints fully supported).\n\n", 
+	sb.WriteString(fmt.Sprintf("Overall compatibility score: **%.1f%%** (%d/%d endpoints fully supported).\n\n",
 		report.Summary.OverallScore, report.Summary.SupportedEndpoints, report.Summary.TotalEndpoints))
-	
+
 	// Compatibility Matrix
 	sb.WriteString("## Compatibility Matrix\n\n")
 	sb.WriteString("| API Category | Support Level | Coverage | Notes |\n")
 	sb.WriteString("|--------------|--------------|----------|-------|\n")
-	
+
 	for _, category := range report.Categories {
 		statusIcon := "✅"
 		statusText := "Full"
@@ -324,15 +324,15 @@ func generateMarkdownReport(report CompatibilityReport) string {
 			statusIcon = "❌"
 			statusText = "Not Supported"
 		}
-		
-		sb.WriteString(fmt.Sprintf("| %s | %s %s | %s | %s |\n", 
+
+		sb.WriteString(fmt.Sprintf("| %s | %s %s | %s | %s |\n",
 			category.Name, statusIcon, statusText, category.Coverage, category.Notes))
 	}
 	sb.WriteString("\n")
-	
+
 	// Detailed Breakdown
 	sb.WriteString("## Detailed Breakdown\n\n")
-	
+
 	for _, category := range report.Categories {
 		statusIcon := "✅"
 		statusText := "Fully Supported"
@@ -344,15 +344,15 @@ func generateMarkdownReport(report CompatibilityReport) string {
 			statusIcon = "❌"
 			statusText = "Not Supported"
 		}
-		
+
 		sb.WriteString(fmt.Sprintf("### %s %s\n\n", statusIcon, category.Name))
 		sb.WriteString(fmt.Sprintf("**Support Level:** %s  \n", statusText))
 		sb.WriteString(fmt.Sprintf("**Coverage:** %s  \n", category.Coverage))
 		sb.WriteString(fmt.Sprintf("**Notes:** %s\n\n", category.Notes))
-		
+
 		sb.WriteString("| Endpoint | Method | Description | Status |\n")
 		sb.WriteString("|----------|--------|-------------|--------|\n")
-		
+
 		for _, endpoint := range category.Endpoints {
 			endpointStatus := "✅"
 			if category.SupportLevel == "PARTIAL" {
@@ -360,13 +360,13 @@ func generateMarkdownReport(report CompatibilityReport) string {
 			} else if category.SupportLevel == "NOT_SUPPORTED" {
 				endpointStatus = "❌"
 			}
-			
-			sb.WriteString(fmt.Sprintf("| `%s` | %s | %s | %s |\n", 
+
+			sb.WriteString(fmt.Sprintf("| `%s` | %s | %s | %s |\n",
 				endpoint.Path, endpoint.Method, endpoint.Description, endpointStatus))
 		}
 		sb.WriteString("\n")
 	}
-	
+
 	// Known Limitations
 	sb.WriteString("## Known Limitations\n\n")
 	sb.WriteString("The following limitations apply to Mockzure compared to real Azure APIs:\n\n")
@@ -374,7 +374,7 @@ func generateMarkdownReport(report CompatibilityReport) string {
 		sb.WriteString(fmt.Sprintf("- %s\n", limitation))
 	}
 	sb.WriteString("\n")
-	
+
 	// Testing Instructions
 	sb.WriteString("## Testing Instructions\n\n")
 	sb.WriteString("To run the compatibility tests:\n\n")
@@ -384,17 +384,17 @@ func generateMarkdownReport(report CompatibilityReport) string {
 	sb.WriteString("# Generate this report\n")
 	sb.WriteString("go run generate_compatibility_report.go\n")
 	sb.WriteString("```\n\n")
-	
+
 	sb.WriteString("## Report Generation\n\n")
 	sb.WriteString("This report is automatically generated from compatibility tests. ")
 	sb.WriteString("To update this report, run `go run generate_compatibility_report.go` from the project root.\n")
-	
+
 	return sb.String()
 }
 
 // Ensure docs directory exists
 func init() {
-	if err := os.MkdirAll("docs", 0755); err != nil {
+	if err := os.MkdirAll("docs", 0750); err != nil {
 		fmt.Printf("Warning: Could not create docs directory: %v\n", err)
 	}
 }

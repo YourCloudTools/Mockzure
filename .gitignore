@@ -9,3 +9,4 @@ mockzure
 # Data and logs
 data/
 logs/
+gosec.sarif

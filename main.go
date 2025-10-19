@@ -2096,7 +2096,11 @@ func main() {
 
 	addr := ":8090"
 	log.Printf("Starting Mockzure on %s", addr)
-	srv := &http.Server{Addr: addr, Handler: mux}
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Mockzure failed to start: %v", err)
 	}
