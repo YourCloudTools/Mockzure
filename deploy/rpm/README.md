@@ -21,7 +21,7 @@ This will:
 ## Requirements
 
 - `rpmbuild` tool installed
-- Go 1.20 or later
+- Go 1.25 or later
 - Standard RPM build environment
 - Works on both macOS and Linux (portable tar usage)
 

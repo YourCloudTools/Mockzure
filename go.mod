@@ -1,5 +1,5 @@
 module github.com/yourcloudtools/mockzure
 
-go 1.22
+go 1.25
 
 

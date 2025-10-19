@@ -37,7 +37,7 @@ The Mockzure portal provides a modern, tabbed interface similar to the Azure Por
 ### Prerequisites
 
 - Docker and Docker Compose installed (recommended), OR
-- Go 1.23+ for building from source
+- Go 1.25+ for building from source
 
 ### Configuration
 

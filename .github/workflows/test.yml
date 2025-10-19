@@ -16,7 +16,7 @@ jobs:
     
     strategy:
       matrix:
-        go-version: ['1.21', '1.22', '1.23']
+        go-version: ['1.24', '1.25']
     
     steps:
       - name: Checkout code
@@ -50,7 +50,7 @@ jobs:
         run: ./test.sh --coverage
 
       - name: Generate comprehensive coverage report
-        if: matrix.go-version == '1.23'
+        if: matrix.go-version == '1.25'
         run: |
           # Generate coverage for all packages
           go test -coverprofile=coverage.out -covermode=atomic ./...
@@ -67,7 +67,7 @@ jobs:
 
       - name: Upload test coverage
         uses: actions/upload-artifact@v4
-        if: matrix.go-version == '1.23'
+        if: matrix.go-version == '1.25'
         with:
           name: coverage-report-go-${{ matrix.go-version }}
           path: |
@@ -86,7 +86,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.25'
 
       - name: Generate compatibility report
         run: |
@@ -112,7 +112,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.25'
 
       - name: Run Gosec Security Scanner
         uses: securego/gosec@master
@@ -135,7 +135,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.25'
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
@@ -153,7 +153,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.25'
 
       - name: Build Mockzure
         run: |
