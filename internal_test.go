@@ -621,30 +621,34 @@ func TestRenderingFunctions(t *testing.T) {
 
 // TestConfigFunctions tests configuration-related functions
 func TestConfigFunctions(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	t.Run("loadConfig", func(t *testing.T) {
 		// Test that loadConfig method exists and can be called
-		store.loadConfig()
-		// The method doesn't return anything, so we just test it doesn't panic
+		if err := store.loadConfig(); err != nil {
+			t.Errorf("loadConfig returned error: %v", err)
+		}
 	})
 
 	t.Run("loadConfig with existing config", func(t *testing.T) {
-		// Test that loadConfig works with the existing config.json
-		newStore := &Store{}
-		newStore.loadConfig()
+		// Test that loadConfig works with the example config
+		newStore := &Store{configPath: "config.yaml.example"}
+		if err := newStore.loadConfig(); err != nil {
+			t.Fatalf("loadConfig returned error: %v", err)
+		}
 
-		// The config should be loaded (we have config.json in the project)
+		// The config should be loaded (we have config.yaml.example in the project)
 		if len(newStore.config.ServiceAccounts) == 0 {
 			t.Error("Config should have service accounts loaded")
 		}
 	})
 
 	t.Run("loadConfig with nonexistent file", func(t *testing.T) {
-		// Test loading config with nonexistent file
-		newStore := &Store{}
-		newStore.loadConfig()
-		// The method handles missing files gracefully, so we just test it doesn't panic
+		// Test loading config with nonexistent file should return error
+		newStore := &Store{configPath: "does-not-exist.yaml"}
+		if err := newStore.loadConfig(); err == nil {
+			t.Error("Expected error for nonexistent config file")
+		}
 	})
 }
