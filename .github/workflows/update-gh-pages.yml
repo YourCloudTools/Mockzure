@@ -49,14 +49,9 @@ jobs:
             ls -la ../
           fi
           
-          # Ensure index.html exists in root
+          # Ensure index.html exists in root via script to avoid heredoc issues
           if [ ! -f "index.html" ]; then
-            if [ -f "docs/index.html" ]; then
-              cp docs/index.html .
-              echo "Copied docs/index.html to root"
-            else
-              echo "Warning: No index.html found in docs directory"
-            fi
+            bash scripts/create-gh-pages-index.sh .
           fi
           
           # List final contents for debugging
