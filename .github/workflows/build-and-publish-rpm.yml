@@ -69,13 +69,6 @@ jobs:
         with:
           go-version: '1.25'
 
-      - name: Download test coverage artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: coverage-report-go-1.25
-          path: ./
-        continue-on-error: true
-
       - name: Verify coverage file exists
         id: coverage
         run: |
@@ -171,6 +164,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Generate coverage for docs
+        run: |
+          go test -coverprofile=coverage.out -covermode=atomic ./...
+
       - name: Download RPM artifact
         uses: actions/download-artifact@v4
         with:
@@ -249,7 +254,11 @@ jobs:
       - name: Copy new RPM to rpms directory
         run: |
           mkdir -p rpms
-          cp artifacts/*.rpm rpms/
+          if compgen -G "artifacts/*.rpm" > /dev/null; then
+            cp artifacts/*.rpm rpms/
+          else
+            echo "No RPM artifacts found to copy. Skipping RPM copy step."
+          fi
           
           # Create a symlink to latest
           cd rpms
