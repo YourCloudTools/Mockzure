@@ -51,6 +51,8 @@ jobs:
           
           # Ensure index.html exists in root via script to avoid heredoc issues
           if [ ! -f "index.html" ]; then
+            git checkout main -- scripts/create-gh-pages-index.sh || true
+            chmod +x scripts/create-gh-pages-index.sh || true
             bash scripts/create-gh-pages-index.sh .
           fi
           

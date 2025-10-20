@@ -107,8 +107,8 @@ jobs:
           SRC_DIR="$TEMP_DIR/mockzure-${VERSION}"
           mkdir -p "$SRC_DIR"
           
-          # Copy source files
-          cp main.go go.mod config.json.example "$SRC_DIR/"
+          # Copy source files (include go.sum for module resolution)
+          cp main.go go.mod go.sum config.yaml.example config.json.example "$SRC_DIR/"
           mkdir -p "$SRC_DIR/deploy/systemd"
           cp deploy/systemd/mockzure.service "$SRC_DIR/deploy/systemd/"
           
@@ -250,6 +250,8 @@ jobs:
           
           # Ensure index.html exists in root for GitHub Pages using script
           if [ ! -f "index.html" ]; then
+            git checkout main -- scripts/create-gh-pages-index.sh || true
+            chmod +x scripts/create-gh-pages-index.sh || true
             bash scripts/create-gh-pages-index.sh .
           fi
           
@@ -282,6 +284,8 @@ jobs:
       - name: Generate RPM repository page
         run: |
           mkdir -p rpms
+          git checkout main -- scripts/create-gh-pages-index.sh || true
+          chmod +x scripts/create-gh-pages-index.sh || true
           bash scripts/create-gh-pages-index.sh rpms
 
       - name: Configure git
