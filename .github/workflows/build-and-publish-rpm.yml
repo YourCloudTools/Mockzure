@@ -192,6 +192,9 @@ jobs:
           # Fetch all branches including gh-pages
           git fetch origin
           
+          # Clean untracked files and directories to avoid checkout conflicts
+          git clean -fd || true
+          
           # Stash any uncommitted changes to avoid checkout conflicts
           git stash push -m "Temporary stash before gh-pages checkout" || true
           
