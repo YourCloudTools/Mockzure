@@ -1,0 +1,154 @@
+name: Fix GitHub Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+
+jobs:
+  fix-gh-pages:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Create gh-pages branch with documentation
+        run: |
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Create or update gh-pages branch
+          if git show-ref --verify --quiet refs/heads/gh-pages; then
+            echo "gh-pages branch exists locally"
+            git checkout gh-pages
+            git reset --hard origin/gh-pages
+          else
+            echo "Creating new gh-pages branch"
+            git checkout --orphan gh-pages
+          fi
+          
+          # Remove all existing files
+          git rm -rf . || true
+          
+          # Copy all documentation files from main branch
+          git checkout main -- docs/
+          git checkout main -- config.json
+          
+          # Move docs contents to root
+          if [ -d "docs" ]; then
+            mv docs/* . 2>/dev/null || true
+            mv docs/.* . 2>/dev/null || true
+            rmdir docs 2>/dev/null || true
+          fi
+          
+          # Ensure index.html exists
+          if [ ! -f "index.html" ]; then
+            echo "Creating basic index.html"
+            cat > index.html << 'EOF'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mockzure - Mock Azure Service</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; text-align: center; }
+        .section { margin: 30px 0; }
+        .section h2 { color: #666; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .section a { color: #007acc; text-decoration: none; }
+        .section a:hover { text-decoration: underline; }
+        .nav { text-align: center; margin: 30px 0; }
+        .nav a { display: inline-block; margin: 0 15px; padding: 10px 20px; background: #007acc; color: white; border-radius: 5px; }
+        .nav a:hover { background: #005a9e; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Mockzure</h1>
+        <p style="text-align: center; font-size: 18px; color: #666;">
+            Mock Azure Service - Development & Testing
+        </p>
+        
+        <div class="nav">
+            <a href="getting-started.html">Getting Started</a>
+            <a href="api-reference.html">API Reference</a>
+            <a href="architecture.html">Architecture</a>
+            <a href="compatibility.html">Compatibility</a>
+            <a href="coverage.html">Coverage</a>
+        </div>
+        
+        <div class="section">
+            <h2>📦 RPM Repository</h2>
+            <p>Download the latest Mockzure RPM packages from our repository:</p>
+            <ul>
+                <li><a href="rpms/">Browse RPM Packages</a></li>
+            </ul>
+        </div>
+        
+        <div class="section">
+            <h2>📚 Documentation</h2>
+            <p>Comprehensive documentation for Mockzure:</p>
+            <ul>
+                <li><a href="getting-started.html">Getting Started</a></li>
+                <li><a href="api-reference.html">API Reference</a></li>
+                <li><a href="architecture.html">Architecture</a></li>
+                <li><a href="compatibility.html">Azure API Compatibility</a></li>
+            </ul>
+        </div>
+        
+        <div class="section">
+            <h2>🔗 Quick Links</h2>
+            <ul>
+                <li><a href="https://github.com/YourCloudTools/Mockzure">GitHub Repository</a></li>
+            </ul>
+        </div>
+        
+        <div style="text-align: center; margin-top: 40px; color: #999; font-size: 14px;">
+            <p>Part of the <a href="https://github.com/YourCloudTools">YourCloudTools</a> project</p>
+        </div>
+    </div>
+</body>
+</html>
+EOF
+          fi
+          
+          # List final contents
+          echo "Final directory contents:"
+          ls -la
+          
+          # Add all files
+          git add .
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            echo "Committing changes to gh-pages"
+            git commit -m "Update GitHub Pages with documentation and index.html"
+            git push origin gh-pages
+            echo "Successfully updated gh-pages branch"
+          fi
+
+      - name: Summary
+        run: |
+          echo "## GitHub Pages Fix Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **GitHub Pages Updated Successfully**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### What was done:" >> $GITHUB_STEP_SUMMARY
+          echo "- Copied all documentation files from main branch" >> $GITHUB_STEP_SUMMARY
+          echo "- Created index.html in root directory" >> $GITHUB_STEP_SUMMARY
+          echo "- Updated gh-pages branch" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🌐 **View at**: https://yourcloudtools.github.io/Mockzure/" >> $GITHUB_STEP_SUMMARY
