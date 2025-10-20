@@ -2,6 +2,7 @@ name: Build and Publish RPM
 
 on:
   push:
+    branches: [main]
     tags:
       - 'v*'
   release:
@@ -14,8 +15,47 @@ permissions:
   id-token: write
 
 jobs:
+  auto-tag:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
+    outputs:
+      tag_created: ${{ steps.tag.outputs.created }}
+      tag_name: ${{ steps.tag.outputs.tag_name }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Create and push tag
+        id: tag
+        run: |
+          # Generate timestamp-based tag
+          TAG_NAME="v$(date +%Y%m%d.%H%M%S)"
+          
+          # Check if tag already exists (very unlikely but safety check)
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Tag $TAG_NAME already exists, skipping"
+            echo "created=false" >> $GITHUB_OUTPUT
+            echo "tag_name=" >> $GITHUB_OUTPUT
+          else
+            # Create and push tag
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag "$TAG_NAME"
+            git push origin "$TAG_NAME"
+            
+            echo "created=true" >> $GITHUB_OUTPUT
+            echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+            echo "Created and pushed tag: $TAG_NAME"
+          fi
+
   build-rpm:
     runs-on: ubuntu-latest
+    needs: auto-tag
+    if: always() && (needs.auto-tag.result == 'success' || github.event_name != 'push' || github.ref != 'refs/heads/main')
     outputs:
       coverage: ${{ steps.coverage.outputs.percentage }}
       version: ${{ steps.version.outputs.VERSION }}
@@ -123,6 +163,7 @@ jobs:
   publish-to-pages:
     needs: build-rpm
     runs-on: ubuntu-latest
+    if: needs.build-rpm.result == 'success'
     env:
       COVERAGE: ${{ needs.build-rpm.outputs.coverage }}
     
