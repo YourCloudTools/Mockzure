@@ -41,7 +41,9 @@ jobs:
           
           # Copy all documentation files from main branch
           git checkout main -- docs/
-          git checkout main -- config.json
+          # Bring in helper script for index generation
+          git checkout main -- scripts/create-gh-pages-index.sh
+          chmod +x scripts/create-gh-pages-index.sh
           
           # Move docs contents to root
           if [ -d "docs" ]; then
