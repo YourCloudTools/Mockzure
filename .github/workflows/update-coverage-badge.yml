@@ -27,24 +27,39 @@ jobs:
         with:
           go-version: '1.25'
 
-      - name: Download test coverage artifact
-        uses: actions/download-artifact@v4
+      - name: Cache Go modules
+        uses: actions/cache@v3
         with:
-          name: coverage-report-go-1.25
-          path: ./
-        continue-on-error: true
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
-      - name: Verify coverage file exists
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Generate fresh coverage report
         run: |
+          echo "Generating fresh coverage report..."
+          go test -coverprofile=coverage.out -covermode=atomic ./...
+          
+          # Generate HTML coverage report
+          go tool cover -html=coverage.out -o coverage.html
+          
+          # Verify coverage file was created
           if [ ! -f "coverage.out" ]; then
-            echo "Coverage file not found, generating fresh coverage..."
-            go test -coverprofile=coverage.out -covermode=atomic ./...
+            echo "Error: Coverage file not generated"
+            exit 1
           fi
+          
+          echo "Coverage report generated successfully"
 
       - name: Update coverage badge
         run: |
-          chmod +x scripts/update-coverage-badge.sh
-          ./scripts/update-coverage-badge.sh --coverage-file coverage.out --docs-dir docs
+          chmod +x bin/update-coverage-badge.sh
+          ./bin/update-coverage-badge.sh --coverage-file coverage.out --docs-dir docs
 
       - name: Check for changes
         id: changes
