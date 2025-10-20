@@ -1,13 +1,19 @@
 resourceGroups:
-  - id: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-dev"
+  - id: "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-dev"
     name: rg-dev
     location: East US
     tags:
       Environment: Development
       CostCenter: IT-001
+  - id: "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-prod"
+    name: rg-prod
+    location: West US
+    tags:
+      Environment: Production
+      CostCenter: IT-001
 
 vms:
-  - id: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-dev/providers/Microsoft.Compute/virtualMachines/vm-web-01"
+  - id: "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-dev/providers/Microsoft.Compute/virtualMachines/vm-web-01"
     name: vm-web-01
     resourceGroup: rg-dev
     location: East US
@@ -19,35 +25,112 @@ vms:
     tags:
       Environment: Development
       Owner: john.doe@company.com
+      CostCenter: IT-001
+      Project: WebApp
+      ManagedBy: Sandman
+  - id: "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-dev/providers/Microsoft.Compute/virtualMachines/vm-api-01"
+    name: vm-api-01
+    resourceGroup: rg-dev
+    location: East US
+    vmSize: Standard_B2s
+    osType: linux
+    provisioningState: Succeeded
+    powerState: VM deallocated
+    status: stopped
+    tags:
+      Environment: Development
+      Owner: jane.smith@company.com
+      CostCenter: IT-001
+      Project: API
+      ManagedBy: Sandman
+  - id: "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-prod/providers/Microsoft.Compute/virtualMachines/vm-web-prod-01"
+    name: vm-web-prod-01
+    resourceGroup: rg-prod
+    location: West US
+    vmSize: Standard_D2s_v3
+    osType: linux
+    provisioningState: Succeeded
+    powerState: VM running
+    status: running
+    tags:
+      Environment: Production
+      Owner: admin@company.com
+      CostCenter: IT-001
+      Project: WebApp
+      ManagedBy: Sandman
 
 users:
-  - id: user-1
+  - id: 12345678-1234-1234-1234-123456789001
     displayName: John Doe
     userPrincipalName: john.doe@company.com
     mail: john.doe@company.com
-    jobTitle: Developer
+    jobTitle: Senior Developer
     department: Engineering
     officeLocation: Seattle
     userType: Member
     accountEnabled: true
-    roles: [Developer]
+    roles: [Developer, "VM Owner"]
     permissions:
       - resource: virtualMachines
-        actions: [read, start, stop]
+        actions: [read, write, delete]
         resourceGroup: rg-dev
     resourceGroups: [rg-dev]
-    subscriptions: [00000000-0000-0000-0000-000000000000]
+    subscriptions: [12345678-1234-1234-1234-123456789012]
+  - id: 12345678-1234-1234-1234-123456789002
+    displayName: Jane Smith
+    userPrincipalName: jane.smith@company.com
+    mail: jane.smith@company.com
+    jobTitle: DevOps Engineer
+    department: Engineering
+    officeLocation: New York
+    userType: Member
+    accountEnabled: true
+    roles: [DevOps, "VM Owner"]
+    permissions:
+      - resource: virtualMachines
+        actions: [read, write, delete]
+        resourceGroup: rg-dev
+    resourceGroups: [rg-dev, rg-prod]
+    subscriptions: [12345678-1234-1234-1234-123456789012]
+  - id: 12345678-1234-1234-1234-123456789003
+    displayName: Admin User
+    userPrincipalName: admin@company.com
+    mail: admin@company.com
+    jobTitle: System Administrator
+    department: IT
+    officeLocation: Seattle
+    userType: Member
+    accountEnabled: true
+    roles: ["Global Administrator", "VM Administrator"]
+    permissions:
+      - resource: "*"
+        actions: ["*"]
+        resourceGroup: "*"
+    resourceGroups: [rg-dev, rg-prod]
+    subscriptions: [12345678-1234-1234-1234-123456789012]
 
 serviceAccounts:
-  - id: sp-1
-    applicationId: your-app-id-here
-    secret: your-secret-key-here
-    displayName: Your Service Account
-    description: Service account for testing
+  - id: sp-12345678-1234-1234-1234-123456789001
+    applicationId: sandman-app-id-12345
+    secret: sandman-secret-key-development-only
+    displayName: Sandman Service Account
+    description: Service account for Sandman to manage VMs
+    accountEnabled: true
     servicePrincipal: true
     permissions:
       - resourceGroup: rg-dev
         permissions: [read, start, stop, restart]
-    graphPermissions: [User.Read.All]
+      - resourceGroup: rg-prod
+        permissions: [read]
+  - id: sp-12345678-1234-1234-1234-123456789002
+    applicationId: admin-automation-app-id
+    secret: admin-secret-key-development-only
+    displayName: Admin Automation Service Account
+    description: Service account for administrative automation
+    accountEnabled: true
+    servicePrincipal: true
+    permissions:
+      - resourceGroup: "*"
+        permissions: [read, write, start, stop, restart, delete]
 
 

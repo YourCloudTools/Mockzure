@@ -13,7 +13,7 @@ import (
 
 // TestAdminUserAccess tests admin user access patterns
 func TestAdminUserAccess(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	t.Run("admin user access to VMs", func(t *testing.T) {
@@ -66,7 +66,7 @@ func TestAdminUserAccess(t *testing.T) {
 func TestMainFunctionIntegration(t *testing.T) {
 	t.Run("server setup components", func(t *testing.T) {
 		// Test that we can create the components main() would use
-		store := &Store{}
+		store := &Store{configPath: "config.yaml.example"}
 		store.init()
 
 		// Test that store is properly initialized
@@ -85,7 +85,7 @@ func TestMainFunctionIntegration(t *testing.T) {
 	})
 
 	t.Run("handler components", func(t *testing.T) {
-		store := &Store{}
+		store := &Store{configPath: "config.yaml.example"}
 		store.init()
 
 		// Test that we can create handlers like main() would
@@ -144,7 +144,7 @@ func TestMainFunctionIntegration(t *testing.T) {
 	})
 
 	t.Run("server lifecycle", func(t *testing.T) {
-		store := &Store{}
+		store := &Store{configPath: "config.yaml.example"}
 		store.init()
 
 		// Create a test server
@@ -175,7 +175,7 @@ func TestMainFunctionIntegration(t *testing.T) {
 
 	t.Run("store initialization", func(t *testing.T) {
 		// Test the initialization that main() would do
-		store := &Store{}
+		store := &Store{configPath: "config.yaml.example"}
 		store.init()
 
 		// Verify store is properly initialized
@@ -195,7 +195,7 @@ func TestMainFunctionIntegration(t *testing.T) {
 
 	t.Run("handler registration", func(t *testing.T) {
 		// Test that we can create handlers like main() would
-		store := &Store{}
+		store := &Store{configPath: "config.yaml.example"}
 		store.init()
 
 		// Create a mux like main() would
@@ -222,7 +222,7 @@ func TestMainFunctionIntegration(t *testing.T) {
 		t.Log("Testing error handling paths")
 
 		// Test with malformed requests
-		store := &Store{}
+		store := &Store{configPath: "config.yaml.example"}
 		store.init()
 		mux := http.NewServeMux()
 
@@ -235,7 +235,7 @@ func TestMainFunctionIntegration(t *testing.T) {
 	})
 
 	t.Run("full request cycle", func(t *testing.T) {
-		store := &Store{}
+		store := &Store{configPath: "config.yaml.example"}
 		store.init()
 		mux := http.NewServeMux()
 
@@ -265,7 +265,7 @@ func TestMainFunctionIntegration(t *testing.T) {
 	})
 
 	t.Run("concurrent requests", func(t *testing.T) {
-		store := &Store{}
+		store := &Store{configPath: "config.yaml.example"}
 		store.init()
 		mux := http.NewServeMux()
 

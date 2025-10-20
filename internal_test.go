@@ -323,7 +323,7 @@ func TestPermissionFunctions(t *testing.T) {
 
 // TestRenderingFunctions tests page rendering functions
 func TestRenderingFunctions(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	t.Run("renderPortalPage", func(t *testing.T) {
