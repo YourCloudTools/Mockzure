@@ -45,7 +45,7 @@ mkdir -p "$SRC_DIR"
 
 # Copy source files to temporary directory
 echo "  Copying source files..."
-cp main.go go.mod config.json.example "$SRC_DIR/"
+cp main.go go.mod config.yaml.example config.json.example "$SRC_DIR/"
 mkdir -p "$SRC_DIR/deploy/systemd"
 cp deploy/systemd/mockzure.service "$SRC_DIR/deploy/systemd/"
 

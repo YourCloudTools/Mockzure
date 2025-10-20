@@ -1,51 +1,83 @@
 # Mockzure Configuration Guide
 
-This guide explains how to configure Mockzure using the `config.json` file.
+This guide explains how to configure Mockzure using a `config.yaml` or `config.json` file.
 
 ## Overview
 
-Mockzure uses a JSON configuration file to define service account credentials and permissions. The configuration file is located at the root of the project and is named `config.json`.
+Mockzure uses a YAML or JSON configuration file to define resources and service accounts. The configuration file is user-provided; there are no defaults.
 
-**Security Note:** `config.json` is excluded from version control via `.gitignore` to prevent accidentally committing secrets. Never commit actual credentials to the repository.
+**Security Note:** `config.yaml`/`config.json` are excluded from version control via `.gitignore` to prevent accidentally committing secrets. Never commit actual credentials to the repository.
 
 ## Configuration File Location
 
-- **Local/Manual Installation:** `./config.json` (in the Mockzure directory)
-- **Docker/Docker Compose:** Mounted to `/app/config.json` inside the container
-- **RPM Installation:** `/etc/mockzure/config.json`
+- **Local/Manual Installation:** `--config ./config.yaml` (or `.json`)
+- **Docker/Docker Compose:** Mount to `/app/config.yaml` and set `MOCKZURE_CONFIG=/app/config.yaml`
+- **RPM Installation:** Place at `/etc/mockzure/config.yaml` and run with `--config /etc/mockzure/config.yaml`
 
 ## Configuration Schema
 
-The configuration file has the following structure:
+The configuration supports four top-level arrays: `resourceGroups`, `vms`, `users`, and `serviceAccounts`.
 
-```json
-{
-  "serviceAccounts": [
-    {
-      "applicationId": "string",
-      "secret": "string",
-      "displayName": "string (optional)",
-      "description": "string (optional)",
-      "graphPermissions": ["string array (optional)"]
-    }
-  ]
-}
+```yaml
+resourceGroups:
+  - id: string
+    name: string
+    location: string
+    tags: { string: string }
+
+vms:
+  - id: string
+    name: string
+    resourceGroup: string
+    location: string
+    vmSize: string
+    osType: string
+    provisioningState: string
+    powerState: string
+    status: string
+    tags: { string: string }
+
+users:
+  - id: string
+    displayName: string
+    userPrincipalName: string
+    mail: string
+    jobTitle: string
+    department: string
+    officeLocation: string
+    userType: string
+    accountEnabled: bool
+    roles: [string]
+    azureRoles:
+      - id: string
+        name: string
+        description: string
+        actions: [string]
+        scope: string
+    permissions:
+      - resource: string
+        actions: [string]
+        resourceGroup: string
+    resourceGroups: [string]
+    subscriptions: [string]
+
+serviceAccounts:
+  - id: string
+    applicationId: string
+    secret: string
+    displayName: string
+    description: string
+    accountEnabled: bool
+    createdDateTime: string (RFC3339)
+    servicePrincipal: bool
+    permissions:
+      - resourceGroup: string | "*"
+        permissions: [read, write, start, stop, restart, delete]
+    graphPermissions: [string]
 ```
 
-### Field Descriptions
-
-#### `serviceAccounts` (array, required)
-Array of service account (service principal) configurations. Each service account represents an Azure Service Principal that can authenticate to Mockzure.
-
-#### Service Account Fields
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `applicationId` | string | Yes | The Client ID / Application ID of the service principal. This is used for authentication. |
-| `secret` | string | Yes | The client secret for the service principal. Used to authenticate requests. |
-| `displayName` | string | No | Human-readable name for the service account. Displayed in the portal. |
-| `description` | string | No | Description of the service account's purpose. |
-| `graphPermissions` | array | No | Array of Microsoft Graph API permissions granted to this service account. |
+### Service Accounts and Graph Permissions
+Service accounts include `applicationId` and `secret` for authentication and may optionally include `graphPermissions` which control access to `/mock/azure/users`.
 
 ## Microsoft Graph Permissions
 
@@ -78,40 +110,41 @@ curl http://localhost:8090/mock/azure/users \
 
 ## Example Configurations
 
-### Minimal Configuration
+### Minimal Configuration (YAML)
 
-```json
-{
-  "serviceAccounts": [
-    {
-      "applicationId": "my-app-id",
-      "secret": "my-secret-key"
-    }
-  ]
-}
+```yaml
+serviceAccounts:
+  - applicationId: my-app-id
+    secret: my-secret-key
 ```
 
-### Full Configuration
+### Full Configuration (YAML)
 
-```json
-{
-  "serviceAccounts": [
-    {
-      "applicationId": "sandman-app-id-12345",
-      "secret": "sandman-secret-key-development-only",
-      "displayName": "Sandman Service Account",
-      "description": "Service account for Sandman to manage VMs",
-      "graphPermissions": ["User.Read.All"]
-    },
-    {
-      "applicationId": "admin-automation-app-id",
-      "secret": "admin-secret-key-development-only",
-      "displayName": "Admin Automation Service Account",
-      "description": "Service account for administrative automation",
-      "graphPermissions": ["User.Read.All", "Directory.Read.All"]
-    }
-  ]
-}
+```yaml
+resourceGroups:
+  - id: "/subscriptions/000.../resourceGroups/rg-dev"
+    name: rg-dev
+    location: East US
+vms:
+  - id: "/subscriptions/000.../resourceGroups/rg-dev/providers/Microsoft.Compute/virtualMachines/vm-web-01"
+    name: vm-web-01
+    resourceGroup: rg-dev
+    location: East US
+    vmSize: Standard_B2s
+    osType: linux
+    provisioningState: Succeeded
+    powerState: VM running
+    status: running
+users:
+  - id: user-1
+    displayName: John Doe
+    userPrincipalName: john.doe@company.com
+    roles: [Developer]
+serviceAccounts:
+  - applicationId: sandman-app-id-12345
+    secret: sandman-secret-key-development-only
+    displayName: Sandman Service Account
+    graphPermissions: [User.Read.All]
 ```
 
 ### Multiple Service Accounts
@@ -187,30 +220,30 @@ Default service accounts in Mockzure have the following resource permissions:
 
 ### File Permissions
 
-Restrict access to `config.json`:
+Restrict access to `config.yaml`:
 
 ```bash
 # Local installation
-chmod 600 config.json
+chmod 600 config.yaml
 
 # RPM installation
-sudo chmod 600 /etc/mockzure/config.json
-sudo chown mockzure:mockzure /etc/mockzure/config.json
+sudo chmod 600 /etc/mockzure/config.yaml
+sudo chown mockzure:mockzure /etc/mockzure/config.yaml
 ```
 
 ### Docker/Docker Compose
 
-When using Docker, mount the config file as read-only:
+When using Docker, mount the config file as read-only and pass its path:
 
 ```bash
-docker run -v $(pwd)/config.json:/app/config.json:ro ...
+docker run -v $(pwd)/config.yaml:/app/config.yaml:ro -e MOCKZURE_CONFIG=/app/config.yaml ...
 ```
 
 In Docker Compose, the `:ro` flag is already included in the provided `compose.yml`.
 
 ### Secret Management
 
-- Never commit `config.json` to version control
+- Never commit `config.yaml`/`config.json` to version control
 - Use strong, randomly generated secrets
 - Rotate secrets regularly
 - Use different secrets for different environments
@@ -219,42 +252,32 @@ In Docker Compose, the `:ro` flag is already included in the provided `compose.y
 ### Development vs Production
 
 For development:
-```json
-{
-  "serviceAccounts": [
-    {
-      "applicationId": "dev-app",
-      "secret": "dev-secret-not-for-production",
-      "displayName": "Development Account"
-    }
-  ]
-}
+```yaml
+serviceAccounts:
+  - applicationId: dev-app
+    secret: dev-secret-not-for-production
+    displayName: Development Account
 ```
 
 For production-like testing:
-```json
-{
-  "serviceAccounts": [
-    {
-      "applicationId": "prod-like-app",
-      "secret": "strong-randomly-generated-secret-32chars",
-      "displayName": "Production-Like Account"
-    }
-  ]
-}
+```yaml
+serviceAccounts:
+  - applicationId: prod-like-app
+    secret: strong-randomly-generated-secret-32chars
+    displayName: Production-Like Account
 ```
 
 ## Troubleshooting
 
 ### Configuration Not Loaded
 
-**Problem:** Mockzure creates a default `config.json` on startup.
+**Problem:** Mockzure errors that no config was provided.
 
-**Solution:** Ensure your `config.json` exists before starting Mockzure.
+**Solution:** Provide a config path via `--config` or set `MOCKZURE_CONFIG` and ensure the file exists.
 
 ```bash
 # Verify file exists
-ls -la config.json
+ls -la config.yaml
 
 # Check file permissions
 chmod 600 config.json
@@ -267,7 +290,7 @@ chmod 600 config.json
 **Solution:** Verify credentials match exactly:
 
 ```bash
-# Check if applicationId exists in config
+# Check if applicationId exists in config (JSON example)
 cat config.json | jq '.serviceAccounts[].applicationId'
 
 # Test authentication
@@ -298,10 +321,10 @@ curl -X POST http://localhost:8090/oauth2/v2.0/token \
 
 ```bash
 # Verify config exists on host
-ls -la $(pwd)/config.json
+ls -la $(pwd)/config.yaml
 
 # Test mount
-docker run --rm -v $(pwd)/config.json:/app/config.json:ro alpine cat /app/config.json
+docker run --rm -v $(pwd)/config.yaml:/app/config.yaml:ro alpine cat /app/config.yaml
 ```
 
 ## Validation
@@ -311,7 +334,7 @@ To validate your configuration:
 1. Start Mockzure and check the logs:
 ```bash
 # Local
-./mockzure
+./mockzure --config ./config.yaml
 
 # Docker
 docker compose logs -f
@@ -320,9 +343,9 @@ docker compose logs -f
 sudo journalctl -u mockzure -f
 ```
 
-2. Look for the configuration load message:
+2. Look for a configuration load message like:
 ```
-Loaded X service account secrets from config
+Config loaded: 1 RGs, 1 VMs, 1 users, 1 service accounts
 ```
 
 3. Test authentication:

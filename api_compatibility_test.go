@@ -24,7 +24,7 @@ type CompatibilityTestResult struct {
 
 // TestMicrosoftIdentityPlatform tests OIDC/OAuth2 endpoints
 func TestMicrosoftIdentityPlatform(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	tests := []struct {
@@ -135,7 +135,7 @@ func TestMicrosoftIdentityPlatform(t *testing.T) {
 
 // TestMicrosoftGraphAPI tests Graph API endpoints
 func TestMicrosoftGraphAPI(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	tests := []struct {
@@ -209,7 +209,7 @@ func TestMicrosoftGraphAPI(t *testing.T) {
 
 // TestAzureResourceManager tests ARM endpoints
 func TestAzureResourceManager(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	subscriptionID := "12345678-1234-1234-1234-123456789012"
@@ -308,7 +308,7 @@ func TestAzureResourceManager(t *testing.T) {
 
 // TestRBACAndAuthorization tests RBAC functionality
 func TestRBACAndAuthorization(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	tests := []struct {
@@ -385,7 +385,7 @@ func TestRBACAndAuthorization(t *testing.T) {
 
 // TestErrorHandling tests error responses and edge cases
 func TestErrorHandling(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	tests := []struct {

@@ -1,17 +1,57 @@
 {
+  "resourceGroups": [
+    {
+      "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-dev",
+      "name": "rg-dev",
+      "location": "East US",
+      "tags": {"Environment": "Development", "CostCenter": "IT-001"}
+    }
+  ],
+  "vms": [
+    {
+      "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-dev/providers/Microsoft.Compute/virtualMachines/vm-web-01",
+      "name": "vm-web-01",
+      "resourceGroup": "rg-dev",
+      "location": "East US",
+      "vmSize": "Standard_B2s",
+      "osType": "linux",
+      "provisioningState": "Succeeded",
+      "powerState": "VM running",
+      "status": "running",
+      "tags": {"Environment": "Development", "Owner": "john.doe@company.com"}
+    }
+  ],
+  "users": [
+    {
+      "id": "user-1",
+      "displayName": "John Doe",
+      "userPrincipalName": "john.doe@company.com",
+      "mail": "john.doe@company.com",
+      "jobTitle": "Developer",
+      "department": "Engineering",
+      "officeLocation": "Seattle",
+      "userType": "Member",
+      "accountEnabled": true,
+      "roles": ["Developer"],
+      "permissions": [
+        {"resource": "virtualMachines", "actions": ["read", "start", "stop"], "resourceGroup": "rg-dev"}
+      ],
+      "resourceGroups": ["rg-dev"],
+      "subscriptions": ["00000000-0000-0000-0000-000000000000"]
+    }
+  ],
   "serviceAccounts": [
     {
+      "id": "sp-1",
       "applicationId": "your-app-id-here",
       "secret": "your-secret-key-here",
       "displayName": "Your Service Account",
       "description": "Description of your service account",
+      "servicePrincipal": true,
+      "permissions": [
+        {"resourceGroup": "rg-dev", "permissions": ["read", "start", "stop", "restart"]}
+      ],
       "graphPermissions": ["User.Read.All"]
-    },
-    {
-      "applicationId": "another-app-id",
-      "secret": "another-secret-key",
-      "displayName": "Another Service Account",
-      "description": "Another service account for testing"
     }
   ]
 }

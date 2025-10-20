@@ -43,7 +43,7 @@ sudo tdnf install -y mockzure-latest.rpm
 
 The RPM installs:
 - Binary: `/usr/bin/mockzure`
-- Configuration: `/etc/mockzure/config.json`
+- Configuration: `/etc/mockzure/config.yaml`
 - Systemd service: `/etc/systemd/system/mockzure.service`
 - Data directory: `/var/lib/mockzure/`
 
@@ -53,7 +53,7 @@ After installing the RPM:
 
 1. Review the configuration (optional):
    ```bash
-   sudo nano /etc/mockzure/config.json
+   sudo nano /etc/mockzure/config.yaml
    ```
 
 2. Enable and start the service:
@@ -80,5 +80,5 @@ The package uses timestamp-based versioning in the format `YYYYMMDD.HHMMSS`. Thi
 
 - Mockzure runs as a systemd service using the `sandman` user
 - The service listens on port 8090 by default
-- Configuration can be customized in `/etc/mockzure/config.json`
+- Configuration can be customized in `/etc/mockzure/config.yaml`
 

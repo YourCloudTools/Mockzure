@@ -9,8 +9,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
+
+	yaml "gopkg.in/yaml.v3"
 )
 
 // Helper function to encode JSON with error handling
@@ -22,91 +25,113 @@ func encodeJSON(w http.ResponseWriter, data interface{}) error {
 // Lightweight replicas of types and behavior from Sandman's internal mock
 
 type ResourceGroup struct {
-	ID       string            `json:"id"`
-	Name     string            `json:"name"`
-	Location string            `json:"location"`
-	Tags     map[string]string `json:"tags"`
+	ID       string            `json:"id" yaml:"id"`
+	Name     string            `json:"name" yaml:"name"`
+	Location string            `json:"location" yaml:"location"`
+	Tags     map[string]string `json:"tags" yaml:"tags"`
 }
 
 type MockVM struct {
-	ID                string            `json:"id"`
-	Name              string            `json:"name"`
-	ResourceGroup     string            `json:"resourceGroup"`
-	Location          string            `json:"location"`
-	VMSize            string            `json:"vmSize"`
-	OSType            string            `json:"osType"`
-	ProvisioningState string            `json:"provisioningState"`
-	PowerState        string            `json:"powerState"`
-	Status            string            `json:"status"`
-	LastUpdated       time.Time         `json:"lastUpdated"`
-	Tags              map[string]string `json:"tags"`
-	Owner             string            `json:"owner"`
-	CostCenter        string            `json:"costCenter"`
-	Environment       string            `json:"environment"`
+	ID                string            `json:"id" yaml:"id"`
+	Name              string            `json:"name" yaml:"name"`
+	ResourceGroup     string            `json:"resourceGroup" yaml:"resourceGroup"`
+	Location          string            `json:"location" yaml:"location"`
+	VMSize            string            `json:"vmSize" yaml:"vmSize"`
+	OSType            string            `json:"osType" yaml:"osType"`
+	ProvisioningState string            `json:"provisioningState" yaml:"provisioningState"`
+	PowerState        string            `json:"powerState" yaml:"powerState"`
+	Status            string            `json:"status" yaml:"status"`
+	LastUpdated       time.Time         `json:"lastUpdated" yaml:"lastUpdated"`
+	Tags              map[string]string `json:"tags" yaml:"tags"`
+	Owner             string            `json:"owner" yaml:"owner"`
+	CostCenter        string            `json:"costCenter" yaml:"costCenter"`
+	Environment       string            `json:"environment" yaml:"environment"`
 }
 
 type MockAzureRole struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Actions     []string `json:"actions"`
-	Scope       string   `json:"scope"`
+	ID          string   `json:"id" yaml:"id"`
+	Name        string   `json:"name" yaml:"name"`
+	Description string   `json:"description" yaml:"description"`
+	Actions     []string `json:"actions" yaml:"actions"`
+	Scope       string   `json:"scope" yaml:"scope"`
 }
 
 type MockPermission struct {
-	Resource      string   `json:"resource"`
-	Actions       []string `json:"actions"`
-	ResourceGroup string   `json:"resourceGroup"`
+	Resource      string   `json:"resource" yaml:"resource"`
+	Actions       []string `json:"actions" yaml:"actions"`
+	ResourceGroup string   `json:"resourceGroup" yaml:"resourceGroup"`
 }
 
 type MockUser struct {
-	ID                string           `json:"id"`
-	DisplayName       string           `json:"displayName"`
-	UserPrincipalName string           `json:"userPrincipalName"`
-	Mail              string           `json:"mail"`
-	JobTitle          string           `json:"jobTitle"`
-	Department        string           `json:"department"`
-	OfficeLocation    string           `json:"officeLocation"`
-	UserType          string           `json:"userType"`
-	AccountEnabled    bool             `json:"accountEnabled"`
-	Roles             []string         `json:"roles"`
-	AzureRoles        []MockAzureRole  `json:"azureRoles"`
-	Permissions       []MockPermission `json:"permissions"`
-	ResourceGroups    []string         `json:"resourceGroups"`
-	Subscriptions     []string         `json:"subscriptions"`
+	ID                string           `json:"id" yaml:"id"`
+	DisplayName       string           `json:"displayName" yaml:"displayName"`
+	UserPrincipalName string           `json:"userPrincipalName" yaml:"userPrincipalName"`
+	Mail              string           `json:"mail" yaml:"mail"`
+	JobTitle          string           `json:"jobTitle" yaml:"jobTitle"`
+	Department        string           `json:"department" yaml:"department"`
+	OfficeLocation    string           `json:"officeLocation" yaml:"officeLocation"`
+	UserType          string           `json:"userType" yaml:"userType"`
+	AccountEnabled    bool             `json:"accountEnabled" yaml:"accountEnabled"`
+	Roles             []string         `json:"roles" yaml:"roles"`
+	AzureRoles        []MockAzureRole  `json:"azureRoles" yaml:"azureRoles"`
+	Permissions       []MockPermission `json:"permissions" yaml:"permissions"`
+	ResourceGroups    []string         `json:"resourceGroups" yaml:"resourceGroups"`
+	Subscriptions     []string         `json:"subscriptions" yaml:"subscriptions"`
 }
 
 // ServiceAccount represents an Azure Service Principal / Service Account
 type ServiceAccount struct {
-	ID               string              `json:"id"`
-	ApplicationID    string              `json:"applicationId"` // Client ID
-	DisplayName      string              `json:"displayName"`
-	Description      string              `json:"description"`
-	AccountEnabled   bool                `json:"accountEnabled"`
-	CreatedDateTime  time.Time           `json:"createdDateTime"`
-	Permissions      []ResourceGroupPerm `json:"permissions"`
-	ServicePrincipal bool                `json:"servicePrincipal"`
-	GraphPermissions []string            `json:"graphPermissions"` // Microsoft Graph API permissions
+	ID               string              `json:"id" yaml:"id"`
+	ApplicationID    string              `json:"applicationId" yaml:"applicationId"` // Client ID
+	DisplayName      string              `json:"displayName" yaml:"displayName"`
+	Description      string              `json:"description" yaml:"description"`
+	AccountEnabled   bool                `json:"accountEnabled" yaml:"accountEnabled"`
+	CreatedDateTime  time.Time           `json:"createdDateTime" yaml:"createdDateTime"`
+	Permissions      []ResourceGroupPerm `json:"permissions" yaml:"permissions"`
+	ServicePrincipal bool                `json:"servicePrincipal" yaml:"servicePrincipal"`
+	GraphPermissions []string            `json:"graphPermissions" yaml:"graphPermissions"` // Microsoft Graph API permissions
 }
 
 // ResourceGroupPerm represents permissions for a service account on a resource group
 type ResourceGroupPerm struct {
-	ResourceGroup string   `json:"resourceGroup"` // Resource group name or "*" for all
-	Permissions   []string `json:"permissions"`   // "read", "write", "start", "stop", "restart"
+	ResourceGroup string   `json:"resourceGroup" yaml:"resourceGroup"` // Resource group name or "*" for all
+	Permissions   []string `json:"permissions" yaml:"permissions"`     // "read", "write", "start", "stop", "restart"
 }
 
 // ServiceAccountConfig holds the secret configuration for service accounts
 type ServiceAccountConfig struct {
-	ServiceAccounts []ServiceAccountSecret `json:"serviceAccounts"`
+	ServiceAccounts []ServiceAccountSecret `json:"serviceAccounts" yaml:"serviceAccounts"`
 }
 
 // ServiceAccountSecret holds the secret for a service account
 type ServiceAccountSecret struct {
-	ApplicationID    string   `json:"applicationId"`
-	Secret           string   `json:"secret"`
-	DisplayName      string   `json:"displayName,omitempty"`
-	Description      string   `json:"description,omitempty"`
-	GraphPermissions []string `json:"graphPermissions,omitempty"`
+	ApplicationID    string   `json:"applicationId" yaml:"applicationId"`
+	Secret           string   `json:"secret" yaml:"secret"`
+	DisplayName      string   `json:"displayName,omitempty" yaml:"displayName,omitempty"`
+	Description      string   `json:"description,omitempty" yaml:"description,omitempty"`
+	GraphPermissions []string `json:"graphPermissions,omitempty" yaml:"graphPermissions,omitempty"`
+}
+
+// FullConfig represents the YAML/JSON configuration file schema
+type FullConfig struct {
+	ResourceGroups  []*ResourceGroup       `json:"resourceGroups" yaml:"resourceGroups"`
+	VMs             []*MockVM              `json:"vms" yaml:"vms"`
+	Users           []*MockUser            `json:"users" yaml:"users"`
+	ServiceAccounts []FullConfigServiceAcc `json:"serviceAccounts" yaml:"serviceAccounts"`
+}
+
+// FullConfigServiceAcc is a service account definition including secret as stored in config
+type FullConfigServiceAcc struct {
+	ID               string              `json:"id,omitempty" yaml:"id,omitempty"`
+	ApplicationID    string              `json:"applicationId" yaml:"applicationId"`
+	Secret           string              `json:"secret" yaml:"secret"`
+	DisplayName      string              `json:"displayName,omitempty" yaml:"displayName,omitempty"`
+	Description      string              `json:"description,omitempty" yaml:"description,omitempty"`
+	AccountEnabled   bool                `json:"accountEnabled,omitempty" yaml:"accountEnabled,omitempty"`
+	CreatedDateTime  time.Time           `json:"createdDateTime,omitempty" yaml:"createdDateTime,omitempty"`
+	Permissions      []ResourceGroupPerm `json:"permissions,omitempty" yaml:"permissions,omitempty"`
+	ServicePrincipal bool                `json:"servicePrincipal,omitempty" yaml:"servicePrincipal,omitempty"`
+	GraphPermissions []string            `json:"graphPermissions,omitempty" yaml:"graphPermissions,omitempty"`
 }
 
 type MockEntraIDResponse struct {
@@ -139,287 +164,98 @@ type Store struct {
 	clients         map[string]*RegisteredClient
 	codes           map[string]*AuthCode
 	config          *ServiceAccountConfig
+	configPath      string
 }
 
 func (s *Store) init() {
-	// Initialize resource groups
-	s.resourceGroups = []*ResourceGroup{
-		{
-			ID:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-dev",
-			Name:     "rg-dev",
-			Location: "East US",
-			Tags: map[string]string{
-				"Environment": "Development",
-				"CostCenter":  "IT-001",
-			},
-		},
-		{
-			ID:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-prod",
-			Name:     "rg-prod",
-			Location: "West US",
-			Tags: map[string]string{
-				"Environment": "Production",
-				"CostCenter":  "IT-001",
-			},
-		},
-	}
+	// Start empty; load only what is defined in config
+	s.resourceGroups = []*ResourceGroup{}
+	s.vms = []*MockVM{}
+	s.users = []*MockUser{}
+	s.serviceAccounts = []*ServiceAccount{}
 
-	s.vms = []*MockVM{
-		{
-			ID:                "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-dev/providers/Microsoft.Compute/virtualMachines/vm-web-01",
-			Name:              "vm-web-01",
-			ResourceGroup:     "rg-dev",
-			Location:          "East US",
-			VMSize:            "Standard_B2s",
-			OSType:            "linux",
-			ProvisioningState: "Succeeded",
-			PowerState:        "VM running",
-			Status:            "running",
-			LastUpdated:       time.Now().Add(-2 * time.Hour),
-			Tags: map[string]string{
-				"Environment": "Development",
-				"Owner":       "john.doe@company.com",
-				"CostCenter":  "IT-001",
-				"Project":     "WebApp",
-				"ManagedBy":   "Sandman",
-			},
-			Owner:       "john.doe@company.com",
-			CostCenter:  "IT-001",
-			Environment: "Development",
-		},
-		{
-			ID:                "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-dev/providers/Microsoft.Compute/virtualMachines/vm-api-01",
-			Name:              "vm-api-01",
-			ResourceGroup:     "rg-dev",
-			Location:          "East US",
-			VMSize:            "Standard_B2s",
-			OSType:            "linux",
-			ProvisioningState: "Succeeded",
-			PowerState:        "VM deallocated",
-			Status:            "stopped",
-			LastUpdated:       time.Now().Add(-1 * time.Hour),
-			Tags: map[string]string{
-				"Environment": "Development",
-				"Owner":       "jane.smith@company.com",
-				"CostCenter":  "IT-001",
-				"Project":     "API",
-				"ManagedBy":   "Sandman",
-			},
-			Owner:       "jane.smith@company.com",
-			CostCenter:  "IT-001",
-			Environment: "Development",
-		},
-		{
-			ID:                "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-prod/providers/Microsoft.Compute/virtualMachines/vm-web-prod-01",
-			Name:              "vm-web-prod-01",
-			ResourceGroup:     "rg-prod",
-			Location:          "West US",
-			VMSize:            "Standard_D2s_v3",
-			OSType:            "linux",
-			ProvisioningState: "Succeeded",
-			PowerState:        "VM running",
-			Status:            "running",
-			LastUpdated:       time.Now().Add(-30 * time.Minute),
-			Tags: map[string]string{
-				"Environment": "Production",
-				"Owner":       "admin@company.com",
-				"CostCenter":  "IT-001",
-				"Project":     "WebApp",
-				"ManagedBy":   "Sandman",
-			},
-			Owner:       "admin@company.com",
-			CostCenter:  "IT-001",
-			Environment: "Production",
-		},
+	// Load from config path (must be set)
+	if err := s.loadConfig(); err != nil {
+		log.Fatalf("Failed to load config: %v", err)
 	}
-
-	s.users = []*MockUser{
-		{
-			ID:                "12345678-1234-1234-1234-123456789001",
-			DisplayName:       "John Doe",
-			UserPrincipalName: "john.doe@company.com",
-			Mail:              "john.doe@company.com",
-			JobTitle:          "Senior Developer",
-			Department:        "Engineering",
-			OfficeLocation:    "Seattle",
-			UserType:          "Member",
-			AccountEnabled:    true,
-			Roles:             []string{"Developer", "VM Owner"},
-			AzureRoles: []MockAzureRole{{
-				ID:          "contributor-001",
-				Name:        "Contributor",
-				Description: "Can manage all resources except access management",
-				Actions:     []string{"*"},
-				Scope:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-dev",
-			}},
-			Permissions: []MockPermission{{
-				Resource:      "virtualMachines",
-				Actions:       []string{"read", "write", "delete"},
-				ResourceGroup: "rg-dev",
-			}},
-			ResourceGroups: []string{"rg-dev"},
-			Subscriptions:  []string{"12345678-1234-1234-1234-123456789012"},
-		},
-		{
-			ID:                "12345678-1234-1234-1234-123456789002",
-			DisplayName:       "Jane Smith",
-			UserPrincipalName: "jane.smith@company.com",
-			Mail:              "jane.smith@company.com",
-			JobTitle:          "DevOps Engineer",
-			Department:        "Engineering",
-			OfficeLocation:    "New York",
-			UserType:          "Member",
-			AccountEnabled:    true,
-			Roles:             []string{"DevOps", "VM Owner"},
-			AzureRoles: []MockAzureRole{{
-				ID:          "contributor-002",
-				Name:        "Contributor",
-				Description: "Can manage all resources except access management",
-				Actions:     []string{"*"},
-				Scope:       "/subscriptions/12345678-1234-1234-1234-123456789012",
-			}},
-			Permissions: []MockPermission{{
-				Resource:      "virtualMachines",
-				Actions:       []string{"read", "write", "delete"},
-				ResourceGroup: "rg-dev",
-			}},
-			ResourceGroups: []string{"rg-dev", "rg-prod"},
-			Subscriptions:  []string{"12345678-1234-1234-1234-123456789012"},
-		},
-		{
-			ID:                "12345678-1234-1234-1234-123456789003",
-			DisplayName:       "Admin User",
-			UserPrincipalName: "admin@company.com",
-			Mail:              "admin@company.com",
-			JobTitle:          "System Administrator",
-			Department:        "IT",
-			OfficeLocation:    "Seattle",
-			UserType:          "Member",
-			AccountEnabled:    true,
-			Roles:             []string{"Global Administrator", "VM Administrator"},
-			AzureRoles: []MockAzureRole{{
-				ID:          "owner-001",
-				Name:        "Owner",
-				Description: "Can manage everything including access",
-				Actions:     []string{"*"},
-				Scope:       "/subscriptions/12345678-1234-1234-1234-123456789012",
-			}},
-			Permissions: []MockPermission{{
-				Resource:      "*",
-				Actions:       []string{"*"},
-				ResourceGroup: "*",
-			}},
-			ResourceGroups: []string{"rg-dev", "rg-prod"},
-			Subscriptions:  []string{"12345678-1234-1234-1234-123456789012"},
-		},
-	}
-
-	// Service Accounts (Azure Service Principals)
-	s.serviceAccounts = []*ServiceAccount{
-		{
-			ID:               "sp-12345678-1234-1234-1234-123456789001",
-			ApplicationID:    "sandman-app-id-12345",
-			DisplayName:      "Sandman Service Account",
-			Description:      "Service account for Sandman to manage VMs",
-			AccountEnabled:   true,
-			CreatedDateTime:  time.Now().Add(-30 * 24 * time.Hour),
-			ServicePrincipal: true,
-			Permissions: []ResourceGroupPerm{
-				{
-					ResourceGroup: "rg-dev",
-					Permissions:   []string{"read", "start", "stop", "restart"},
-				},
-				{
-					ResourceGroup: "rg-prod",
-					Permissions:   []string{"read"},
-				},
-			},
-		},
-		{
-			ID:               "sp-12345678-1234-1234-1234-123456789002",
-			ApplicationID:    "admin-automation-app-id",
-			DisplayName:      "Admin Automation Service Account",
-			Description:      "Service account for administrative automation",
-			AccountEnabled:   true,
-			CreatedDateTime:  time.Now().Add(-60 * 24 * time.Hour),
-			ServicePrincipal: true,
-			Permissions: []ResourceGroupPerm{
-				{
-					ResourceGroup: "*", // All resource groups
-					Permissions:   []string{"read", "write", "start", "stop", "restart", "delete"},
-				},
-			},
-		},
-	}
-
-	// Load service account secrets from config file
-	s.loadConfig()
 
 	// app registrations and auth codes
 	s.clients = make(map[string]*RegisteredClient)
 	s.codes = make(map[string]*AuthCode)
 }
 
-// loadConfig loads service account secrets from config file
-func (s *Store) loadConfig() {
-	configPath := "config.json"
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		// Create default config if it doesn't exist
-		defaultConfig := &ServiceAccountConfig{
-			ServiceAccounts: []ServiceAccountSecret{
-				{
-					ApplicationID: "sandman-app-id-12345",
-					Secret:        "sandman-secret-key-development-only",
-				},
-				{
-					ApplicationID: "admin-automation-app-id",
-					Secret:        "admin-secret-key-development-only",
-				},
-			},
-		}
-		data, err := json.MarshalIndent(defaultConfig, "", "  ")
-		if err != nil {
-			log.Printf("Failed to marshal config: %v", err)
-			return
-		}
-		if err := os.WriteFile(configPath, data, 0600); err != nil {
-			log.Printf("Failed to write config file: %v", err)
-			return
-		}
-		s.config = defaultConfig
-		log.Printf("Created default config file: %s", configPath)
-		return
+// loadConfig loads resources and secrets from the configured file
+func (s *Store) loadConfig() error {
+	if s.configPath == "" {
+		return fmt.Errorf("config path not set")
 	}
-
-	// Load existing config
-	data, err := os.ReadFile(configPath)
+	data, err := os.ReadFile(s.configPath)
 	if err != nil {
-		log.Printf("Failed to read config file: %v", err)
-		s.config = &ServiceAccountConfig{}
-		return
+		return fmt.Errorf("read config: %w", err)
 	}
 
-	var config ServiceAccountConfig
-	if err := json.Unmarshal(data, &config); err != nil {
-		log.Printf("Failed to parse config file: %v", err)
-		s.config = &ServiceAccountConfig{}
-		return
-	}
-
-	s.config = &config
-	log.Printf("Loaded %d service account secrets from config", len(config.ServiceAccounts))
-
-	// Update service accounts with Graph permissions from config
-	for i, sa := range s.serviceAccounts {
-		for _, configSA := range config.ServiceAccounts {
-			if sa.ApplicationID == configSA.ApplicationID {
-				if len(configSA.GraphPermissions) > 0 {
-					s.serviceAccounts[i].GraphPermissions = configSA.GraphPermissions
-					log.Printf("Applied Graph permissions to %s: %v", sa.ApplicationID, configSA.GraphPermissions)
-				}
+	var fc FullConfig
+	ext := strings.ToLower(filepath.Ext(s.configPath))
+	switch ext {
+	case ".yaml", ".yml":
+		if err := yaml.Unmarshal(data, &fc); err != nil {
+			return fmt.Errorf("parse yaml: %w", err)
+		}
+	case ".json":
+		if err := json.Unmarshal(data, &fc); err != nil {
+			return fmt.Errorf("parse json: %w", err)
+		}
+	default:
+		// Try YAML then JSON
+		if err := yaml.Unmarshal(data, &fc); err != nil {
+			if err2 := json.Unmarshal(data, &fc); err2 != nil {
+				return fmt.Errorf("unsupported config format: %v / %v", err, err2)
 			}
 		}
 	}
+
+	// Secrets for auth
+	s.config = &ServiceAccountConfig{ServiceAccounts: []ServiceAccountSecret{}}
+
+	// Hydrate resources
+	if fc.ResourceGroups != nil {
+		s.resourceGroups = fc.ResourceGroups
+	}
+	if fc.VMs != nil {
+		s.vms = fc.VMs
+	}
+	if fc.Users != nil {
+		s.users = fc.Users
+	}
+	if fc.ServiceAccounts != nil {
+		for _, csa := range fc.ServiceAccounts {
+			// Build store service account (without secret)
+			sa := &ServiceAccount{
+				ID:               csa.ID,
+				ApplicationID:    csa.ApplicationID,
+				DisplayName:      csa.DisplayName,
+				Description:      csa.Description,
+				AccountEnabled:   csa.AccountEnabled || true,
+				CreatedDateTime:  csa.CreatedDateTime,
+				Permissions:      csa.Permissions,
+				ServicePrincipal: csa.ServicePrincipal || true,
+				GraphPermissions: csa.GraphPermissions,
+			}
+			s.serviceAccounts = append(s.serviceAccounts, sa)
+			// Add secret to auth config
+			s.config.ServiceAccounts = append(s.config.ServiceAccounts, ServiceAccountSecret{
+				ApplicationID:    csa.ApplicationID,
+				Secret:           csa.Secret,
+				DisplayName:      csa.DisplayName,
+				Description:      csa.Description,
+				GraphPermissions: csa.GraphPermissions,
+			})
+		}
+	}
+
+	log.Printf("Config loaded: %d RGs, %d VMs, %d users, %d service accounts",
+		len(s.resourceGroups), len(s.vms), len(s.users), len(s.serviceAccounts))
+	return nil
 }
 
 // authenticateServiceAccount validates a service account request
@@ -1106,6 +942,7 @@ func main() {
 	// Parse command line flags
 	var showHelp = flag.Bool("help", false, "Show help information")
 	var showVersion = flag.Bool("version", false, "Show version information")
+	var configPathFlag = flag.String("config", "", "Path to config file (json|yaml). Can also use MOCKZURE_CONFIG env var")
 	flag.Parse()
 
 	// Handle help flag
@@ -1113,9 +950,10 @@ func main() {
 		fmt.Println("Mockzure - Azure API Mock Server")
 		fmt.Println("")
 		fmt.Println("Usage:")
-		fmt.Println("  mockzure [options]")
+		fmt.Println("  mockzure --config /path/to/config.(json|yaml) [options]")
 		fmt.Println("")
 		fmt.Println("Options:")
+		fmt.Println("  --config   Path to config file (or set MOCKZURE_CONFIG)")
 		fmt.Println("  --help     Show this help message")
 		fmt.Println("  --version  Show version information")
 		fmt.Println("")
@@ -1123,6 +961,7 @@ func main() {
 		fmt.Println("  Mockzure is a mock server that provides Azure-compatible APIs")
 		fmt.Println("  for testing and development purposes.")
 		fmt.Println("")
+		fmt.Println("  A configuration file is required and can be JSON or YAML.")
 		fmt.Println("  The server will start on port 8090 by default.")
 		fmt.Println("")
 		fmt.Println("Endpoints:")
@@ -1142,7 +981,19 @@ func main() {
 		os.Exit(0)
 	}
 
-	store := &Store{}
+	// Resolve config path
+	cfgPath := *configPathFlag
+	if cfgPath == "" {
+		cfgPath = os.Getenv("MOCKZURE_CONFIG")
+	}
+	if cfgPath == "" {
+		log.Fatal("config path required via --config or MOCKZURE_CONFIG")
+	}
+	if _, err := os.Stat(cfgPath); err != nil {
+		log.Fatalf("config file not accessible: %v", err)
+	}
+
+	store := &Store{configPath: cfgPath}
 	store.init()
 
 	mux := http.NewServeMux()

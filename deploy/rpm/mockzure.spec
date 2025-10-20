@@ -37,8 +37,8 @@ mkdir -p %{buildroot}%{_sharedstatedir}/mockzure
 # Install binary
 install -m 0755 mockzure %{buildroot}%{_bindir}/mockzure
 
-# Install configuration
-install -m 0644 config.json.example %{buildroot}%{_sysconfdir}/mockzure/config.json
+# Install example configuration (YAML default)
+install -m 0644 config.yaml.example %{buildroot}%{_sysconfdir}/mockzure/config.yaml
 
 # Install systemd service
 install -m 0644 deploy/systemd/mockzure.service %{buildroot}%{_unitdir}/mockzure.service
@@ -55,8 +55,8 @@ exit 0
 # Set proper permissions
 chown -R sandman:sandman %{_sharedstatedir}/mockzure
 chmod 700 %{_sharedstatedir}/mockzure
-chown root:sandman %{_sysconfdir}/mockzure/config.json
-chmod 640 %{_sysconfdir}/mockzure/config.json
+chown root:sandman %{_sysconfdir}/mockzure/config.yaml
+chmod 640 %{_sysconfdir}/mockzure/config.yaml
 
 # Reload systemd
 %systemd_post mockzure.service
@@ -69,7 +69,7 @@ chmod 640 %{_sysconfdir}/mockzure/config.json
 
 %files
 %{_bindir}/mockzure
-%config(noreplace) %attr(0640,root,sandman) %{_sysconfdir}/mockzure/config.json
+%config(noreplace) %attr(0640,root,sandman) %{_sysconfdir}/mockzure/config.yaml
 %{_unitdir}/mockzure.service
 %dir %attr(0700,sandman,sandman) %{_sharedstatedir}/mockzure
 
