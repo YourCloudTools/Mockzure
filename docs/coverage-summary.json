@@ -1,0 +1,8 @@
+{
+  "generated_at": "2025-10-20T04:35:46Z",
+  "total_coverage": 13.8,
+  "total_functions": 16,
+  "covered_functions": 9,
+  "badge_color": "red",
+  "badge_url": "https://img.shields.io/badge/coverage-13.8%25-red"
+}
