@@ -37,7 +37,16 @@ jobs:
           # Copy all docs content
           if [ -d "../docs" ]; then
             cp -r ../docs/* .
-            echo "Copied documentation files"
+            echo "Copied documentation files from ../docs"
+          elif [ -d "docs" ]; then
+            cp -r docs/* .
+            echo "Copied documentation files from docs"
+          else
+            echo "Warning: docs directory not found at ../docs or docs"
+            echo "Current directory contents:"
+            ls -la
+            echo "Parent directory contents:"
+            ls -la ../
           fi
           
           # Ensure index.html exists in root

@@ -231,12 +231,21 @@ jobs:
           ls -la ../
           
           # Copy documentation from docs directory (from main branch checkout)
+          # The docs directory is in the parent directory (main branch checkout)
           if [ -d "../docs" ]; then
             echo "Copying documentation files from ../docs..."
             cp -r ../docs/* .
             echo "Copied documentation files from ../docs"
+          elif [ -d "docs" ]; then
+            echo "Copying documentation files from docs..."
+            cp -r docs/* .
+            echo "Copied documentation files from docs"
           else
-            echo "Warning: docs directory not found at ../docs"
+            echo "Warning: docs directory not found at ../docs or docs"
+            echo "Current directory contents:"
+            ls -la
+            echo "Parent directory contents:"
+            ls -la ../
           fi
           
           # Ensure index.html exists in root for GitHub Pages
