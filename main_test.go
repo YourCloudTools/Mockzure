@@ -11,7 +11,7 @@ import (
 
 // TestServiceAccountAuthentication tests basic service account authentication
 func TestServiceAccountAuthentication(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	tests := []struct {
@@ -83,7 +83,7 @@ func TestServiceAccountAuthentication(t *testing.T) {
 
 // TestServiceAccountVMFiltering tests that VMs are filtered based on service account permissions
 func TestServiceAccountVMFiltering(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	tests := []struct {
@@ -175,7 +175,7 @@ func TestServiceAccountVMFiltering(t *testing.T) {
 
 // TestServiceAccountPermissions tests permission checking for different operations
 func TestServiceAccountPermissions(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	// Get the Sandman service account
@@ -281,7 +281,7 @@ func TestServiceAccountPermissions(t *testing.T) {
 
 // TestAdminServiceAccountPermissions tests that admin account has full access
 func TestAdminServiceAccountPermissions(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	// Get the Admin service account
@@ -314,7 +314,7 @@ func TestAdminServiceAccountPermissions(t *testing.T) {
 
 // TestVMOperationsWithPermissions tests VM operations with permission checks
 func TestVMOperationsWithPermissions(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	tests := []struct {
@@ -410,7 +410,7 @@ func TestVMOperationsWithPermissions(t *testing.T) {
 
 // TestBackwardCompatibility tests that VM endpoints work without authentication
 func TestBackwardCompatibility(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	req := httptest.NewRequest("GET", "/mock/azure/vms", nil)
@@ -431,7 +431,7 @@ func TestBackwardCompatibility(t *testing.T) {
 
 // TestServiceAccountCreation tests creating a new service account
 func TestServiceAccountCreation(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	newAccount := &ServiceAccount{
@@ -483,7 +483,7 @@ func TestServiceAccountCreation(t *testing.T) {
 
 // TestWildcardPermissions tests wildcard resource group permissions
 func TestWildcardPermissions(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	// Get the Admin service account (has wildcard permissions)
@@ -522,7 +522,7 @@ func TestWildcardPermissions(t *testing.T) {
 // the admin user can see all VMs that the service account has access to
 func TestSandmanAdminUserSeesAllAssignedVMs(t *testing.T) {
 	// Initialize store with default data
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	// Verify we have the expected VMs

@@ -10,7 +10,7 @@ import (
 
 // TestAdminUserAccessToVMs tests that an admin user (not service account) can access VMs
 func TestAdminUserAccessToVMs(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	tests := []struct {
@@ -126,7 +126,7 @@ func TestAdminUserAccessToVMs(t *testing.T) {
 
 // TestAdminUserVMOperations tests VM operations with admin user credentials
 func TestAdminUserVMOperations(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	tests := []struct {
@@ -218,7 +218,7 @@ func TestAdminUserVMOperations(t *testing.T) {
 
 // TestUserAuthenticationFlow tests complete authentication flow for users vs service accounts
 func TestUserAuthenticationFlow(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	t.Run("Distinguish between user and service account", func(t *testing.T) {
@@ -256,7 +256,7 @@ func TestUserAuthenticationFlow(t *testing.T) {
 
 // TestBackwardCompatibilityWithUserAuth tests that user auth doesn't break existing functionality
 func TestBackwardCompatibilityWithUserAuth(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	t.Run("User auth falls back to no-auth behavior", func(t *testing.T) {
@@ -284,7 +284,7 @@ func TestBackwardCompatibilityWithUserAuth(t *testing.T) {
 
 // TestAPIEndpointWithDifferentAuthTypes tests actual API endpoint behavior
 func TestAPIEndpointWithDifferentAuthTypes(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	// Create a test server
