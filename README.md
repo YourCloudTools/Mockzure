@@ -41,19 +41,23 @@ The Mockzure portal provides a modern, tabbed interface similar to the Azure Por
 
 ### Configuration
 
-Before running Mockzure, create your configuration file:
+Before running Mockzure, create your configuration file (JSON or YAML):
 
 ```bash
-# Copy the example configuration
-cp config.json.example config.json
+# YAML (recommended)
+cp config.yaml.example config.yaml
+nano config.yaml
 
-# Edit the configuration with your service account credentials
-nano config.json  # or use your preferred editor
+# Or JSON
+cp config.json.example config.json
+nano config.json
 ```
 
-The `config.json` file defines service account credentials for authentication. See [Configuration Guide](docs/CONFIGURATION.md) for detailed documentation.
+The config file defines resources and service account credentials. See [Configuration Guide](docs/CONFIGURATION.md) for detailed documentation.
 
-**Note:** `config.json` is excluded from version control for security. Never commit actual secrets to the repository.
+Notes:
+- `config.yaml`/`config.json` are excluded from version control for security.
+- Defaults are no longer auto-created; you must provide a config via `--config` or `MOCKZURE_CONFIG`.
 
 ### Run with Docker Compose (Recommended)
 
@@ -173,11 +177,12 @@ If you prefer using `docker run` directly instead of Docker Compose:
 # Pull the image
 docker pull ghcr.io/yourcloudtools/mockzure:latest
 
-# Run with config.json mounted from current directory
+# Run with config.yaml mounted from current directory and pass the path
 docker run -d \
   --name mockzure \
   -p 8090:8090 \
-  -v $(pwd)/config.json:/app/config.json:ro \
+  -v $(pwd)/config.yaml:/app/config.yaml:ro \
+  -e MOCKZURE_CONFIG=/app/config.yaml \
   --restart unless-stopped \
   ghcr.io/yourcloudtools/mockzure:latest
 
@@ -194,25 +199,17 @@ docker rm mockzure
 **With Custom Config Path:**
 
 ```bash
-# If config.json is in a different location
+# If your config is in a different location
 docker run -d \
   --name mockzure \
   -p 8090:8090 \
-  -v /path/to/your/config.json:/app/config.json:ro \
+  -v /path/to/your/config.yaml:/app/config.yaml:ro \
+  -e MOCKZURE_CONFIG=/app/config.yaml \
   --restart unless-stopped \
   ghcr.io/yourcloudtools/mockzure:latest
 ```
 
-**Without Config File (Uses Defaults):**
-
-```bash
-# Run without mounting config (will create default config)
-docker run -d \
-  --name mockzure \
-  -p 8090:8090 \
-  --restart unless-stopped \
-  ghcr.io/yourcloudtools/mockzure:latest
-```
+Mockzure requires a config; it will error without one. Provide `--config /path/to/file` or set `MOCKZURE_CONFIG`.
 
 **Run Specific Version:**
 
@@ -315,7 +312,7 @@ sudo journalctl -u mockzure -f
 
 The RPM package installs:
 - Binary: `/usr/bin/mockzure`
-- Configuration: `/etc/mockzure/config.json`
+- Configuration: `/etc/mockzure/config.yaml` (or `.json`)
 - Systemd service: `/etc/systemd/system/mockzure.service`
 - Data directory: `/var/lib/mockzure/`
 
@@ -328,7 +325,7 @@ For development or other platforms, build from source:
 ```bash
 cd Mockzure
 go build -o mockzure main.go
-./mockzure
+./mockzure --config ./config.yaml
 ```
 
 ## API Endpoints
@@ -526,23 +523,10 @@ For detailed information about configuring Mockzure, see the [Configuration Guid
 For Azure API compatibility information, see the [Azure API Compatibility Report](docs/AZURE_API_COMPATIBILITY.md).
 
 Quick configuration reference:
-- **Config File:** `config.json` (required for service account authentication)
-- **Schema:** Service accounts with applicationId, secret, and optional Graph permissions
-- **Location:** Project root (local), `/app/config.json` (Docker), `/etc/mockzure/config.json` (RPM)
-- **Security:** File is excluded from git, use read-only mounts in Docker
-
-Example minimal configuration:
-```json
-{
-  "serviceAccounts": [
-    {
-      "applicationId": "your-app-id",
-      "secret": "your-secret-key",
-      "graphPermissions": ["User.Read.All"]
-    }
-  ]
-}
-```
+- **Config File:** `config.yaml` or `config.json` (required)
+- **Schema:** `resourceGroups`, `vms`, `users`, `serviceAccounts` (with `secret`)
+- **Location:** Project root (local), `/app/config.yaml` (Docker), `/etc/mockzure/config.yaml` (RPM)
+- **Security:** Exclude from git; mount read-only in Docker
 
 ## Development Mode
 
@@ -633,7 +617,7 @@ cd Mockzure
 go build -o mockzure main.go
 
 # Run
-./mockzure
+./mockzure --config ./config.yaml
 
 # Or use the development script
 ./bin/dev.sh

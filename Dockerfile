@@ -46,8 +46,7 @@ WORKDIR /app
 # Copy binary
 COPY --from=builder /app/mockzure .
 
-# Copy config (will be overridden by volume mount in dev)
-COPY --from=builder /app/config.json.example config.json
+# No default config is shipped in the image; provide one via volume and env
 
 # Create data directory
 RUN mkdir -p /app/data /app/logs

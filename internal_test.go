@@ -9,7 +9,7 @@ import (
 
 // TestHelperFunctions tests utility functions
 func TestHelperFunctions(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	t.Run("baseURL", func(t *testing.T) {
@@ -166,7 +166,7 @@ func TestJWTFunctions(t *testing.T) {
 
 // TestAuthenticationFunctions tests authentication-related functions
 func TestAuthenticationFunctions(t *testing.T) {
-	store := &Store{}
+	store := &Store{configPath: "config.yaml.example"}
 	store.init()
 
 	t.Run("authenticateServiceAccount with valid credentials", func(t *testing.T) {

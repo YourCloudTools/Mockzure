@@ -134,9 +134,9 @@ rpm:
 # Development setup
 dev-setup: deps
 	@echo "🛠️  Setting up development environment..."
-	@if [ ! -f "config.json" ]; then \
-		cp config.json.example config.json; \
-		echo "📝 Created config.json from example"; \
+	@if [ ! -f "config.yaml" ]; then \
+		cp config.yaml.example config.yaml; \
+		echo "📝 Created config.yaml from example"; \
 	fi
 	@echo "✅ Development environment ready"
 

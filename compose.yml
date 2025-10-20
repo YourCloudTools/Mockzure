@@ -11,8 +11,10 @@ services:
     ports:
       - "8090:8090"
     volumes:
-      # Mount your config.json from the host (read-only for security)
-      - ./config.json:/app/config.json:ro
+      # Mount your config file from the host (read-only for security)
+      # Supports either JSON or YAML. Adjust the right-hand path accordingly.
+      # Example for YAML:
+      - ./config.yaml:/app/config.yaml:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8090/mock/azure/stats"]
@@ -23,4 +25,6 @@ services:
     environment:
       # Optional environment variables can be added here
       - TZ=UTC
+      # Provide config path to the containerized server
+      - MOCKZURE_CONFIG=/app/config.yaml
 
