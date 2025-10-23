@@ -23,6 +23,8 @@ testing and development purposes.
 %build
 # Build the Go binary
 # Note: CGO_ENABLED=1 required for Azure Linux (CBL-Mariner) FIPS crypto
+export GO111MODULE=on
+go mod download
 CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o mockzure main.go
 
 %install
