@@ -2,6 +2,7 @@ package routes
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -17,19 +18,34 @@ func (rg *RouteGenerator) GenerateRoutes(registry *specs.Registry) ([]Route, err
 	allSpecs := registry.GetAll()
 	for apiType, specList := range allSpecs {
 		for _, spec := range specList {
+			var specRoutes []Route
+			var err error
+
 			if spec.IsOpenAPI3() {
-				openAPIRoutes, err := rg.generateFromOpenAPI3(spec, apiType)
+				specRoutes, err = rg.generateFromOpenAPI3(spec, apiType)
 				if err != nil {
 					return nil, fmt.Errorf("failed to generate routes from %s: %w", spec.Path, err)
 				}
-				routes = append(routes, openAPIRoutes...)
 			} else if spec.IsSwagger2() {
-				swaggerRoutes, err := rg.generateFromSwagger2(spec, apiType)
+				specRoutes, err = rg.generateFromSwagger2(spec, apiType)
 				if err != nil {
 					return nil, fmt.Errorf("failed to generate routes from %s: %w", spec.Path, err)
 				}
-				routes = append(routes, swaggerRoutes...)
 			}
+
+			if len(specRoutes) > 0 {
+				log.Printf("Generated %d route(s) from spec '%s' (%s)", len(specRoutes), spec.Name, apiType)
+				// Log first few routes as examples
+				for i, route := range specRoutes {
+					if i < 3 {
+						log.Printf("  - %s %s (operation: %s)", route.Method, route.Path, route.OperationID)
+					} else if i == 3 {
+						log.Printf("  ... and %d more route(s)", len(specRoutes)-3)
+						break
+					}
+				}
+			}
+			routes = append(routes, specRoutes...)
 		}
 	}
 

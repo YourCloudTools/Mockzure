@@ -3,6 +3,7 @@ package specs
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,31 +28,51 @@ func NewLoader(specsDir string) *Loader {
 
 // LoadAll loads all specifications from the specs directory
 func (l *Loader) LoadAll(registry *Registry) error {
+	var loadedCount int
+	var skippedCount int
+
 	// Load ARM specs
-	if err := l.loadARMSpecs(registry); err != nil {
+	armLoaded, armSkipped, err := l.loadARMSpecs(registry)
+	if err != nil {
 		return fmt.Errorf("failed to load ARM specs: %w", err)
 	}
+	loadedCount += armLoaded
+	skippedCount += armSkipped
+	log.Printf("Loaded %d ARM spec(s), skipped %d placeholder(s)", armLoaded, armSkipped)
 
 	// Load Graph specs
-	if err := l.loadGraphSpecs(registry); err != nil {
+	graphLoaded, graphSkipped, err := l.loadGraphSpecs(registry)
+	if err != nil {
 		return fmt.Errorf("failed to load Graph specs: %w", err)
 	}
+	loadedCount += graphLoaded
+	skippedCount += graphSkipped
+	log.Printf("Loaded %d Graph spec(s), skipped %d placeholder(s)", graphLoaded, graphSkipped)
 
 	// Load Identity specs
-	if err := l.loadIdentitySpecs(registry); err != nil {
+	identityLoaded, identitySkipped, err := l.loadIdentitySpecs(registry)
+	if err != nil {
 		return fmt.Errorf("failed to load Identity specs: %w", err)
 	}
+	loadedCount += identityLoaded
+	skippedCount += identitySkipped
+	log.Printf("Loaded %d Identity spec(s), skipped %d placeholder(s)", identityLoaded, identitySkipped)
 
+	log.Printf("Total: Loaded %d spec(s), skipped %d placeholder(s)", loadedCount, skippedCount)
 	return nil
 }
 
 // loadARMSpecs loads ARM API specifications
-func (l *Loader) loadARMSpecs(registry *Registry) error {
+// Returns: (loadedCount, skippedCount, error)
+func (l *Loader) loadARMSpecs(registry *Registry) (int, int, error) {
 	armDir := filepath.Join(l.specsDir, "arm")
 	files, err := os.ReadDir(armDir)
 	if err != nil {
-		return fmt.Errorf("failed to read ARM directory: %w", err)
+		return 0, 0, fmt.Errorf("failed to read ARM directory: %w", err)
 	}
+
+	loadedCount := 0
+	skippedCount := 0
 
 	for _, file := range files {
 		if !strings.HasSuffix(file.Name(), ".json") {
@@ -63,26 +84,34 @@ func (l *Loader) loadARMSpecs(registry *Registry) error {
 		if err != nil {
 			// Skip placeholder files (like "404: Not Found")
 			if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "placeholder") {
+				log.Printf("Skipping placeholder file: %s", file.Name())
+				skippedCount++
 				continue
 			}
-			return fmt.Errorf("failed to load %s: %w", filePath, err)
+			return loadedCount, skippedCount, fmt.Errorf("failed to load %s: %w", filePath, err)
 		}
 		if spec != nil {
 			spec.Name = strings.TrimSuffix(file.Name(), ".json")
 			registry.Register(spec)
+			log.Printf("Loaded ARM spec: %s (%s)", spec.Name, getSpecFormat(spec))
+			loadedCount++
 		}
 	}
 
-	return nil
+	return loadedCount, skippedCount, nil
 }
 
 // loadGraphSpecs loads Graph API specifications
-func (l *Loader) loadGraphSpecs(registry *Registry) error {
+// Returns: (loadedCount, skippedCount, error)
+func (l *Loader) loadGraphSpecs(registry *Registry) (int, int, error) {
 	graphDir := filepath.Join(l.specsDir, "graph")
 	files, err := os.ReadDir(graphDir)
 	if err != nil {
-		return fmt.Errorf("failed to read Graph directory: %w", err)
+		return 0, 0, fmt.Errorf("failed to read Graph directory: %w", err)
 	}
+
+	loadedCount := 0
+	skippedCount := 0
 
 	for _, file := range files {
 		if !strings.HasSuffix(file.Name(), ".yaml") && !strings.HasSuffix(file.Name(), ".yml") {
@@ -92,46 +121,67 @@ func (l *Loader) loadGraphSpecs(registry *Registry) error {
 		filePath := filepath.Join(graphDir, file.Name())
 		spec, err := l.loadSpecFile(filePath, APITypeGraph)
 		if err != nil {
-			return fmt.Errorf("failed to load %s: %w", filePath, err)
+			// Skip placeholder files
+			if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "placeholder") {
+				log.Printf("Skipping placeholder file: %s", file.Name())
+				skippedCount++
+				continue
+			}
+			return loadedCount, skippedCount, fmt.Errorf("failed to load %s: %w", filePath, err)
 		}
 		if spec != nil {
 			spec.Name = strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
 			registry.Register(spec)
+			log.Printf("Loaded Graph spec: %s (%s)", spec.Name, getSpecFormat(spec))
+			loadedCount++
 		}
 	}
 
-	return nil
+	return loadedCount, skippedCount, nil
 }
 
 // loadIdentitySpecs loads Identity/OIDC specifications
-func (l *Loader) loadIdentitySpecs(registry *Registry) error {
+// Returns: (loadedCount, skippedCount, error)
+func (l *Loader) loadIdentitySpecs(registry *Registry) (int, int, error) {
 	identityDir := filepath.Join(l.specsDir, "identity")
 	files, err := os.ReadDir(identityDir)
 	if err != nil {
-		return fmt.Errorf("failed to read Identity directory: %w", err)
+		return 0, 0, fmt.Errorf("failed to read Identity directory: %w", err)
 	}
+
+	loadedCount := 0
+	skippedCount := 0
 
 	for _, file := range files {
 		filePath := filepath.Join(identityDir, file.Name())
 		
 		// Skip non-spec files (like oidc-configuration.json, oidc-jwks.json)
 		if file.Name() == "oidc-configuration.json" || file.Name() == "oidc-jwks.json" {
+			skippedCount++
 			continue
 		}
 
 		if strings.HasSuffix(file.Name(), ".yaml") || strings.HasSuffix(file.Name(), ".yml") {
 			spec, err := l.loadSpecFile(filePath, APITypeIdentity)
 			if err != nil {
-				return fmt.Errorf("failed to load %s: %w", filePath, err)
+				// Skip placeholder files
+				if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "placeholder") {
+					log.Printf("Skipping placeholder file: %s", file.Name())
+					skippedCount++
+					continue
+				}
+				return loadedCount, skippedCount, fmt.Errorf("failed to load %s: %w", filePath, err)
 			}
 			if spec != nil {
 				spec.Name = strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
 				registry.Register(spec)
+				log.Printf("Loaded Identity spec: %s (%s)", spec.Name, getSpecFormat(spec))
+				loadedCount++
 			}
 		}
 	}
 
-	return nil
+	return loadedCount, skippedCount, nil
 }
 
 // loadSpecFile loads a single spec file and determines its format
@@ -231,5 +281,16 @@ func (l *Loader) loadSwagger2(data []byte, filePath string, apiType APIType) (*S
 		Swagger2: doc.Spec(),
 		Path:     filePath,
 	}, nil
+}
+
+// getSpecFormat returns a string describing the spec format
+func getSpecFormat(spec *Spec) string {
+	if spec.IsOpenAPI3() {
+		return "OpenAPI 3.0"
+	}
+	if spec.IsSwagger2() {
+		return "Swagger 2.0"
+	}
+	return "Unknown"
 }
 

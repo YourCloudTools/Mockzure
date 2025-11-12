@@ -1078,8 +1078,10 @@ func main() {
 
 	// Load API specifications and generate routes
 	specsDir := "mockzure-specs"
+	log.Printf("Loading API specifications from: %s", specsDir)
 	if _, err := os.Stat(specsDir); os.IsNotExist(err) {
 		log.Printf("Warning: specs directory '%s' not found, skipping spec-driven routes", specsDir)
+		log.Printf("Note: Only hardcoded mock-specific routes will be available")
 	} else {
 		// Initialize spec loader and registry
 		loader := specs.NewLoader(specsDir)
@@ -1087,18 +1089,19 @@ func main() {
 
 		// Load all specs
 		if err := loader.LoadAll(registry); err != nil {
-			log.Printf("Warning: Failed to load specs: %v", err)
+			log.Printf("Error: Failed to load specs: %v", err)
 			log.Printf("Continuing without spec-driven routes")
 		} else {
-			log.Printf("Loaded API specifications successfully")
-
 			// Generate routes from specs
 			routeGen := routes.NewRouteGenerator(store)
 			generatedRoutes, err := routeGen.GenerateRoutes(registry)
 			if err != nil {
-				log.Printf("Warning: Failed to generate routes from specs: %v", err)
+				log.Printf("Error: Failed to generate routes from specs: %v", err)
+				log.Printf("Continuing without spec-driven routes")
+			} else if len(generatedRoutes) == 0 {
+				log.Printf("Warning: No routes generated from specifications")
 			} else {
-				log.Printf("Generated %d routes from specifications", len(generatedRoutes))
+				log.Printf("Successfully generated %d route(s) from specifications", len(generatedRoutes))
 
 				// Register spec-driven routes
 				// All Azure API endpoints are now generated from specs
@@ -1179,13 +1182,27 @@ func main() {
 		renderPortalPage(w, store)
 	})
 
-	// Resource Groups routes are now generated from ARM specs
-
-	// Service Accounts routes are now generated from Graph API specs
-
-	// VM routes are now generated from ARM specs
-
-	// Users routes are now generated from Graph API specs
+	// ============================================================================
+	// ROUTE REGISTRATION SUMMARY
+	// ============================================================================
+	//
+	// SPEC-DRIVEN ROUTES (dynamically generated from mockzure-specs/):
+	//   - ARM API routes: /subscriptions/{subscriptionId}/resourceGroups/...
+	//   - ARM API routes: /subscriptions/{subscriptionId}/providers/...
+	//   - ARM API routes: /providers/Microsoft.Resources/operations
+	//   - Graph API routes: /v1.0/users/...
+	//   - Graph API routes: /v1.0/servicePrincipals/...
+	//   All Azure API endpoints are automatically generated from OpenAPI/Swagger specs
+	//
+	// HARDCODED ROUTES (mock-specific functionality):
+	//   - Web Portal: / (root)
+	//   - OIDC Discovery: /.well-known/openid-configuration
+	//   - OAuth2/OIDC: /oauth2/v2.0/authorize, /oauth2/v2.0/token, /oidc/userinfo
+	//   - App Registration: /mock/azure/apps
+	//   - Stats: /mock/azure/stats
+	//   - Data Management: /mock/azure/data/clear, /mock/azure/data/reset
+	//
+	// ============================================================================
 
 	// OIDC/OAuth2 endpoints
 	// Note: These are kept as hardcoded handlers because they require custom mock logic

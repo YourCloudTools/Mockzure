@@ -142,44 +142,114 @@ func handleIdentityRequest(w http.ResponseWriter, r *http.Request, params map[st
 }
 
 // RegisterRoutes registers generated routes with an HTTP mux
+// Uses a single catch-all handler that matches routes dynamically to handle overlapping paths
 func RegisterRoutes(mux *http.ServeMux, routes []Route) {
+	registeredCount := 0
+	byMethod := make(map[string]int)
+
+	// Group routes by their base path prefix to optimize matching
+	// For routes with parameters, we need a catch-all handler
+	routeMap := make(map[string][]Route)
+	var exactRoutes []Route
+
 	for _, route := range routes {
-		// Create a handler that extracts path parameters
-		handler := func(rt Route) http.HandlerFunc {
-			return func(w http.ResponseWriter, r *http.Request) {
-				// Only handle the correct HTTP method
-				if r.Method != rt.Method {
-					http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-					return
-				}
-
-				// Match the path and extract parameters
-				matched, params := MatchPath(rt.Path, r.URL.Path)
-				if !matched {
-					// Let other handlers try
-					http.NotFound(w, r)
-					return
-				}
-
-				// Call the route handler
-				rt.Handler(w, r, params)
-			}
-		}(route)
-
-		// Register with mux using a pattern matcher
-		// For paths with parameters, we need to use a custom matcher
 		if strings.Contains(route.Path, "{") {
-			// Path with parameters - register a catch-all pattern
-			// Extract the base path before first parameter
+			// Parameterized route - group by base path
 			basePath := extractBasePath(route.Path)
-			mux.HandleFunc(basePath, handler)
-		} else {
-			// Exact path match
-			mux.HandleFunc(route.Path, handler)
-			if !strings.HasSuffix(route.Path, "/") {
-				mux.HandleFunc(route.Path+"/", handler)
+			if basePath == "" {
+				basePath = "/"
 			}
+			routeMap[basePath] = append(routeMap[basePath], route)
+		} else {
+			// Exact path route
+			exactRoutes = append(exactRoutes, route)
 		}
+		registeredCount++
+		byMethod[route.Method]++
+	}
+
+	// Register exact path routes first (they take precedence)
+	for _, route := range exactRoutes {
+		handler := createRouteHandler(route)
+		mux.HandleFunc(route.Path, handler)
+		if !strings.HasSuffix(route.Path, "/") {
+			mux.HandleFunc(route.Path+"/", handler)
+		}
+	}
+
+	// Register parameterized routes with catch-all handlers
+	for basePath, routeGroup := range routeMap {
+		// Create a handler that checks all routes in this group
+		handler := func(routes []Route) http.HandlerFunc {
+			return func(w http.ResponseWriter, r *http.Request) {
+				// Try to match against all routes in this group
+				for _, route := range routes {
+					if r.Method != route.Method {
+						continue
+					}
+
+					matched, params := MatchPath(route.Path, r.URL.Path)
+					if matched {
+						// Found a match - call the handler
+						route.Handler(w, r, params)
+						return
+					}
+				}
+
+				// No match found
+				http.NotFound(w, r)
+			}
+		}(routeGroup)
+
+		// Register with the base path
+		// In http.ServeMux, patterns ending with '/' match all paths with that prefix
+		if basePath == "/" {
+			// Root path - register as catch-all (but only if no exact route registered)
+			// Check if we already registered exact "/" route
+			hasExactRoot := false
+			for _, route := range exactRoutes {
+				if route.Path == "/" {
+					hasExactRoot = true
+					break
+				}
+			}
+			if !hasExactRoot {
+				mux.HandleFunc("/", handler)
+			}
+		} else {
+			// Ensure base path ends with '/' for prefix matching
+			prefixPath := basePath
+			if !strings.HasSuffix(prefixPath, "/") {
+				prefixPath = prefixPath + "/"
+			}
+			mux.HandleFunc(prefixPath, handler)
+		}
+	}
+
+	log.Printf("Registered %d route(s) with HTTP mux", registeredCount)
+	for method, count := range byMethod {
+		log.Printf("  - %s: %d route(s)", method, count)
+	}
+}
+
+// createRouteHandler creates a handler function for a single route
+func createRouteHandler(route Route) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Only handle the correct HTTP method
+		if r.Method != route.Method {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Match the path and extract parameters
+		matched, params := MatchPath(route.Path, r.URL.Path)
+		if !matched {
+			http.NotFound(w, r)
+			return
+		}
+
+		// Call the route handler
+		route.Handler(w, r, params)
 	}
 }
 
@@ -191,4 +261,3 @@ func extractBasePath(pattern string) string {
 	}
 	return pattern[:idx]
 }
-
