@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Optional version suffix (defaults to UTC timestamp)"
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -19,10 +25,17 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.PAT_TOKEN || github.token }}
 
-      - name: Generate timestamp version
+      - name: Generate version
         id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          VERSION=$(date -u +%Y%m%d.%H%M%S)
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="$INPUT_VERSION"
+          else
+            VERSION=$(date -u +%Y%m%d.%H%M%S)
+          fi
+
           TAG_NAME="v${VERSION}"
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
@@ -60,9 +73,6 @@ jobs:
             echo "### ✅ Tag Created Successfully" >> $GITHUB_STEP_SUMMARY
             echo "Created tag: \`${{ steps.version.outputs.TAG_NAME }}\`" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "This will trigger the RPM build workflow which will:" >> $GITHUB_STEP_SUMMARY
-            echo "- Build the RPM package" >> $GITHUB_STEP_SUMMARY
-            echo "- Publish to GitHub Pages" >> $GITHUB_STEP_SUMMARY
-            echo "- Update the RPM repository" >> $GITHUB_STEP_SUMMARY
+            echo "Trigger the **Build and Publish RPM** workflow to produce release artifacts." >> $GITHUB_STEP_SUMMARY
           fi
 

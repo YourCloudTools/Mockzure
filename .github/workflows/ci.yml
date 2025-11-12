@@ -1,30 +1,36 @@
-name: Test Suite
+name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
+    tags: ['v*']
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
   security-events: write
 
+env:
+  GO_VERSION: '1.25'
+
 jobs:
-  test:
+  tests:
+    name: Unit Tests & Coverage
     runs-on: ubuntu-latest
-    
-    # Single Go version - no matrix needed
-    
+
+    outputs:
+      coverage: ${{ steps.coverage-summary.outputs.coverage }}
+
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: ${{ env.GO_VERSION }}
 
       - name: Cache Go modules
         uses: actions/cache@v3
@@ -39,58 +45,91 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Verify dependencies
-        run: go mod verify
-
       - name: Run test script
         run: ./bin/test.sh
 
-      - name: Run compatibility tests with coverage
-        run: ./bin/test.sh --coverage
-
-      - name: Generate comprehensive coverage report
+      - name: Generate coverage artifacts
+        id: coverage-summary
         run: |
-          # Generate coverage for all packages
           go test -coverprofile=coverage.out -covermode=atomic ./...
-          
-          # Generate HTML coverage report
           go tool cover -html=coverage.out -o coverage.html
-          
-          # Generate coverage summary
-          echo "## Coverage Summary" > coverage-summary.txt
-          go tool cover -func=coverage.out | tail -1 >> coverage-summary.txt
-          echo "" >> coverage-summary.txt
-          echo "## Function Coverage" >> coverage-summary.txt
-          go tool cover -func=coverage.out | grep -v "total:" >> coverage-summary.txt
+          go tool cover -func=coverage.out > coverage-summary.txt
 
-      - name: Upload test coverage
+          COVERAGE=$(tail -n 1 coverage-summary.txt | awk '{print $3}')
+          echo "coverage=${COVERAGE}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report-go-1.25
+          name: coverage-report
           path: |
             coverage.out
             coverage.html
             coverage-summary.txt
 
-  compatibility-report:
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
-    needs: test
-    
+
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
+          args: --timeout=5m
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Run gosec
+        uses: securego/gosec@master
+        with:
+          args: '-fmt sarif -out gosec.sarif ./...'
+
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: gosec.sarif
+
+  compatibility:
+    name: API Compatibility Report
+    runs-on: ubuntu-latest
+    needs: tests
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
 
       - name: Generate compatibility report
         run: |
           go mod download
           go run cmd/generate_compatibility_report/main.go
 
-      - name: Upload compatibility report
+      - name: Upload compatibility artifacts
         uses: actions/upload-artifact@v4
         with:
           name: azure-api-compatibility-report
@@ -98,59 +137,19 @@ jobs:
             docs/AZURE_API_COMPATIBILITY.md
             docs/AZURE_API_COMPATIBILITY.json
 
-  security-scan:
+  build:
+    name: Build Binaries
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
-    
+    needs: tests
+
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
-
-      - name: Run Gosec Security Scanner
-        uses: securego/gosec@master
-        with:
-          args: '-fmt sarif -out gosec.sarif ./...'
-
-      - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: gosec.sarif
-
-  lint:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.25'
-
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v8
-        with:
-          version: latest
-          args: --timeout=5m
-
-  build-verification:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.25'
+          go-version: ${{ env.GO_VERSION }}
 
       - name: Build Mockzure
         run: |
@@ -169,3 +168,4 @@ jobs:
           path: |
             mockzure
             generate-report
+
