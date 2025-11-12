@@ -101,6 +101,8 @@ Docker Compose is the recommended way to run Mockzure. It handles configuration 
 - Docker Engine 20.10+ and Docker Compose V2
 - `config.json` file in the project directory
 
+**Note:** The default `compose.yml` builds the image locally to support ARM64 (Apple Silicon Macs). The pre-built registry image only supports AMD64.
+
 **Steps:**
 
 ```bash
@@ -149,22 +151,24 @@ docker compose up -d --build
 
 **Using Local Build:**
 
-To build from the local Dockerfile instead of pulling from GitHub Container Registry, edit `compose.yml`:
+By default, `compose.yml` builds the image locally for ARM64 support (required for Apple Silicon Macs). The image is built automatically when you run `docker compose up`.
+
+If you want to use the pre-built image from GitHub Container Registry instead (AMD64 only), edit `compose.yml`:
 
 ```yaml
 services:
   mockzure:
-    # Comment out the image line
-    # image: ghcr.io/yourcloudtools/mockzure:latest
-    # Uncomment the build section
-    build:
-      context: .
-      target: production
+    # Comment out the build section
+    # build:
+    #   context: .
+    #   target: production
+    # Uncomment the image line (AMD64 only)
+    image: ghcr.io/yourcloudtools/mockzure:latest
 ```
 
 Then run:
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
 ### Docker Run

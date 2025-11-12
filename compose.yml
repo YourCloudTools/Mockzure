@@ -2,11 +2,16 @@ version: '3.8'
 
 services:
   mockzure:
-    image: ghcr.io/yourcloudtools/mockzure:latest
-    # Uncomment below to build from local Dockerfile instead
-    # build:
-    #   context: .
-    #   target: production
+    # Build locally for ARM64 support (works immediately)
+    # After the next CI build, multi-platform images (AMD64 + ARM64) will be available
+    # in the registry. You can then switch to using the registry image by commenting
+    # out the build section and uncommenting the image line below.
+    build:
+      context: .
+      target: production
+    # Uncomment below to use pre-built multi-platform image from registry
+    # (requires ARM64 images to be built in CI first)
+    # image: ghcr.io/yourcloudtools/mockzure:latest
     container_name: mockzure
     ports:
       - "8090:8090"
