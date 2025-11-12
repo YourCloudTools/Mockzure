@@ -14,7 +14,9 @@ services:
       # Mount your config file from the host (read-only for security)
       # Supports either JSON or YAML. Adjust the right-hand path accordingly.
       # Example for YAML:
-      - ./config.yaml:/app/config.yaml:ro
+      - ./config.yaml.example:/app/config.yaml:ro
+      # Alternative: mount a directory and specify the file via MOCKZURE_CONFIG
+      # - ./config:/app/config:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8090/mock/azure/stats"]
@@ -26,5 +28,6 @@ services:
       # Optional environment variables can be added here
       - TZ=UTC
       # Provide config path to the containerized server
+      # Defaults to /app/config.yaml if not set
       - MOCKZURE_CONFIG=/app/config.yaml
 

@@ -1,0 +1,66 @@
+openapi: 3.0.3
+info:
+  title: Mockzure OIDC
+  version: 0.1.0
+servers:
+  - url: https://login.mockzure.local
+paths:
+  /.well-known/openid-configuration:
+    get:
+      summary: OIDC discovery document
+      responses:
+        '200':
+          description: Discovery
+          content:
+            application/json:
+              schema:
+                type: object
+  /oauth2/v2.0/authorize:
+    get:
+      summary: Authorization endpoint
+      parameters:
+        - in: query
+          name: client_id
+          schema: { type: string }
+        - in: query
+          name: response_type
+          schema: { type: string }
+        - in: query
+          name: redirect_uri
+          schema: { type: string, format: uri }
+        - in: query
+          name: scope
+          schema: { type: string }
+        - in: query
+          name: state
+          schema: { type: string }
+      responses:
+        '302':
+          description: Redirect with code
+  /oauth2/v2.0/token:
+    post:
+      summary: Token endpoint
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Token response
+          content:
+            application/json:
+              schema:
+                type: object
+  /discovery/v2.0/keys:
+    get:
+      summary: JWKS
+      responses:
+        '200':
+          description: JWKS
+          content:
+            application/json:
+              schema:
+                type: object

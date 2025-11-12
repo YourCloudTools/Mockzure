@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/yourcloudtools/mockzure/internal/routes"
+	"github.com/yourcloudtools/mockzure/internal/specs"
 	yaml "gopkg.in/yaml.v3"
 )
 
@@ -165,6 +167,76 @@ type Store struct {
 	codes           map[string]*AuthCode
 	config          *ServiceAccountConfig
 	configPath      string
+}
+
+// GetResourceGroups returns resource groups as interface slice for mappers
+func (s *Store) GetResourceGroups() []interface{} {
+	result := make([]interface{}, len(s.resourceGroups))
+	for i, rg := range s.resourceGroups {
+		result[i] = map[string]interface{}{
+			"id":       rg.ID,
+			"name":     rg.Name,
+			"location": rg.Location,
+			"tags":     rg.Tags,
+		}
+	}
+	return result
+}
+
+// GetVMs returns VMs as interface slice for mappers
+func (s *Store) GetVMs() []interface{} {
+	result := make([]interface{}, len(s.vms))
+	for i, vm := range s.vms {
+		result[i] = map[string]interface{}{
+			"id":                vm.ID,
+			"name":              vm.Name,
+			"resourceGroup":     vm.ResourceGroup,
+			"location":          vm.Location,
+			"vmSize":            vm.VMSize,
+			"osType":            vm.OSType,
+			"provisioningState": vm.ProvisioningState,
+			"powerState":        vm.PowerState,
+			"status":            vm.Status,
+			"tags":              vm.Tags,
+		}
+	}
+	return result
+}
+
+// GetUsers returns users as interface slice for mappers
+func (s *Store) GetUsers() []interface{} {
+	result := make([]interface{}, len(s.users))
+	for i, user := range s.users {
+		result[i] = map[string]interface{}{
+			"id":                user.ID,
+			"displayName":       user.DisplayName,
+			"userPrincipalName": user.UserPrincipalName,
+			"mail":              user.Mail,
+			"jobTitle":          user.JobTitle,
+			"department":        user.Department,
+			"officeLocation":    user.OfficeLocation,
+			"userType":          user.UserType,
+			"accountEnabled":    user.AccountEnabled,
+			"roles":             user.Roles,
+		}
+	}
+	return result
+}
+
+// GetServiceAccounts returns service accounts as interface slice for mappers
+func (s *Store) GetServiceAccounts() []interface{} {
+	result := make([]interface{}, len(s.serviceAccounts))
+	for i, sa := range s.serviceAccounts {
+		result[i] = map[string]interface{}{
+			"id":               sa.ID,
+			"applicationId":    sa.ApplicationID,
+			"displayName":      sa.DisplayName,
+			"description":      sa.Description,
+			"accountEnabled":   sa.AccountEnabled,
+			"servicePrincipal": sa.ServicePrincipal,
+		}
+	}
+	return result
 }
 
 func (s *Store) init() {
@@ -989,8 +1061,14 @@ func main() {
 	if cfgPath == "" {
 		log.Fatal("config path required via --config or MOCKZURE_CONFIG")
 	}
-	if _, err := os.Stat(cfgPath); err != nil {
+
+	// Check if config path exists and is a file (not a directory)
+	info, err := os.Stat(cfgPath)
+	if err != nil {
 		log.Fatalf("config file not accessible: %v", err)
+	}
+	if info.IsDir() {
+		log.Fatalf("config path is a directory, not a file: %s (hint: use a file like config.yaml or config.json)", cfgPath)
 	}
 
 	store := &Store{configPath: cfgPath}
@@ -998,8 +1076,42 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	// OIDC Discovery
-	// OIDC Discovery endpoint handler (reusable)
+	// Load API specifications and generate routes
+	specsDir := "mockzure-specs"
+	if _, err := os.Stat(specsDir); os.IsNotExist(err) {
+		log.Printf("Warning: specs directory '%s' not found, skipping spec-driven routes", specsDir)
+	} else {
+		// Initialize spec loader and registry
+		loader := specs.NewLoader(specsDir)
+		registry := specs.NewRegistry()
+
+		// Load all specs
+		if err := loader.LoadAll(registry); err != nil {
+			log.Printf("Warning: Failed to load specs: %v", err)
+			log.Printf("Continuing without spec-driven routes")
+		} else {
+			log.Printf("Loaded API specifications successfully")
+
+			// Generate routes from specs
+			routeGen := routes.NewRouteGenerator(store)
+			generatedRoutes, err := routeGen.GenerateRoutes(registry)
+			if err != nil {
+				log.Printf("Warning: Failed to generate routes from specs: %v", err)
+			} else {
+				log.Printf("Generated %d routes from specifications", len(generatedRoutes))
+
+				// Register spec-driven routes
+				// All Azure API endpoints are now generated from specs
+				// Remaining hardcoded routes are only for mock-specific functionality (portal, stats, data management)
+				routes.RegisterRoutes(mux, generatedRoutes)
+			}
+		}
+	}
+
+	// OIDC Discovery endpoints
+	// Note: These are kept as hardcoded handlers because they require custom mock logic
+	// (dynamic issuer URL, mock-specific endpoints) that isn't in the OIDC spec.
+	// The spec defines the endpoint structure, but the implementation is mock-specific.
 	oidcDiscoveryHandler := func(w http.ResponseWriter, r *http.Request) {
 		iss := baseURL(r)
 		doc := map[string]interface{}{
@@ -1017,11 +1129,7 @@ func main() {
 			return
 		}
 	}
-
-	// OIDC Discovery endpoints (both root and tenant-specific)
 	mux.HandleFunc("/.well-known/openid-configuration", oidcDiscoveryHandler)
-	// Azure SDK uses tenant-specific path: /{tenant-id}/v2.0/.well-known/openid-configuration
-	// We'll handle this with a catch-all that checks the pattern
 	mux.HandleFunc("/tenant-id/v2.0/.well-known/openid-configuration", oidcDiscoveryHandler)
 	mux.HandleFunc("/common/v2.0/.well-known/openid-configuration", oidcDiscoveryHandler)
 
@@ -1071,579 +1179,19 @@ func main() {
 		renderPortalPage(w, store)
 	})
 
-	// Resource Groups
-	mux.HandleFunc("/mock/azure/resource-groups", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(map[string]interface{}{"value": store.resourceGroups, "count": len(store.resourceGroups)}); err != nil {
-				log.Printf("Failed to encode JSON response: %v", err)
-			}
-		case http.MethodPost:
-			var rg ResourceGroup
-			if err := json.NewDecoder(r.Body).Decode(&rg); err != nil {
-				http.Error(w, "Invalid JSON", http.StatusBadRequest)
-				return
-			}
-			if rg.Tags == nil {
-				rg.Tags = map[string]string{}
-			}
-			store.resourceGroups = append(store.resourceGroups, &rg)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusCreated)
-			if err := json.NewEncoder(w).Encode(rg); err != nil {
-				log.Printf("Failed to encode JSON response: %v", err)
-			}
-		default:
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	})
+	// Resource Groups routes are now generated from ARM specs
 
-	mux.HandleFunc("/mock/azure/resource-groups/", func(w http.ResponseWriter, r *http.Request) {
-		path := strings.TrimPrefix(r.URL.Path, "/mock/azure/resource-groups/")
-		parts := strings.Split(path, "/")
-		if len(parts) == 0 || parts[0] == "" {
-			http.Error(w, "Resource group name required", http.StatusBadRequest)
-			return
-		}
-		rgName := parts[0]
+	// Service Accounts routes are now generated from Graph API specs
 
-		switch r.Method {
-		case http.MethodGet:
-			for _, rg := range store.resourceGroups {
-				if rg.Name == rgName {
-					// Return resource group with its VMs
-					vms := []*MockVM{}
-					for _, vm := range store.vms {
-						if vm.ResourceGroup == rgName {
-							vms = append(vms, vm)
-						}
-					}
-					w.Header().Set("Content-Type", "application/json")
-					if err := json.NewEncoder(w).Encode(map[string]interface{}{
-						"resourceGroup": rg,
-						"vms":           vms,
-					}); err != nil {
-						log.Printf("Failed to encode JSON response: %v", err)
-					}
-					return
-				}
-			}
-			http.Error(w, "Resource group not found", http.StatusNotFound)
-		default:
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	})
+	// VM routes are now generated from ARM specs
 
-	// Service Accounts (Entra ID)
-	mux.HandleFunc("/mock/azure/service-accounts", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(map[string]interface{}{"value": store.serviceAccounts, "count": len(store.serviceAccounts)}); err != nil {
-				log.Printf("Failed to encode JSON response: %v", err)
-			}
-		case http.MethodPost:
-			var sa ServiceAccount
-			if err := json.NewDecoder(r.Body).Decode(&sa); err != nil {
-				http.Error(w, "Invalid JSON", http.StatusBadRequest)
-				return
-			}
-			if sa.Permissions == nil {
-				sa.Permissions = []ResourceGroupPerm{}
-			}
-			sa.CreatedDateTime = time.Now()
-			store.serviceAccounts = append(store.serviceAccounts, &sa)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusCreated)
-			if err := json.NewEncoder(w).Encode(sa); err != nil {
-				log.Printf("Failed to encode JSON response: %v", err)
-			}
-		default:
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	})
+	// Users routes are now generated from Graph API specs
 
-	mux.HandleFunc("/mock/azure/service-accounts/", func(w http.ResponseWriter, r *http.Request) {
-		path := strings.TrimPrefix(r.URL.Path, "/mock/azure/service-accounts/")
-		parts := strings.Split(path, "/")
-		if len(parts) == 0 || parts[0] == "" {
-			http.Error(w, "Service account ID required", http.StatusBadRequest)
-			return
-		}
-		saID := parts[0]
+	// OIDC/OAuth2 endpoints
+	// Note: These are kept as hardcoded handlers because they require custom mock logic
+	// (user selection page, token generation, auth code management) that isn't in the OIDC spec.
+	// The spec defines the endpoint structure, but the implementation is mock-specific.
 
-		switch r.Method {
-		case http.MethodGet:
-			for _, sa := range store.serviceAccounts {
-				if sa.ID == saID || sa.ApplicationID == saID {
-					w.Header().Set("Content-Type", "application/json")
-					if err := json.NewEncoder(w).Encode(sa); err != nil {
-						log.Printf("Failed to encode JSON response: %v", err)
-					}
-					return
-				}
-			}
-			http.Error(w, "Service account not found", http.StatusNotFound)
-		default:
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	})
-
-	// VMs (with service account authentication support)
-	// Azure ARM API endpoint for VMs (Azure SDK uses this path)
-	// Pattern: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Compute/virtualMachines
-	mux.HandleFunc("/subscriptions/", func(w http.ResponseWriter, r *http.Request) {
-		// Check if it's a VM list or get request
-		if strings.Contains(r.URL.Path, "/providers/Microsoft.Compute/virtualMachines") && r.Method == http.MethodGet {
-			log.Printf("DEBUG: ARM VM endpoint called - Path: %s, Query: %s", r.URL.Path, r.URL.RawQuery)
-
-			// Extract resource group and VM name from path
-			// Path format: /subscriptions/{id}/resourceGroups/{rg}/providers/Microsoft.Compute/virtualMachines[/{vmName}]
-			parts := strings.Split(r.URL.Path, "/")
-			resourceGroup := ""
-			vmName := ""
-
-			for i, part := range parts {
-				if part == "resourceGroups" && i+1 < len(parts) {
-					resourceGroup = parts[i+1]
-				}
-				if part == "virtualMachines" && i+1 < len(parts) && parts[i+1] != "" {
-					vmName = parts[i+1]
-					log.Printf("DEBUG: ARM - Single VM request for: %s", vmName)
-				}
-			}
-
-			// Single VM GET request
-			if vmName != "" {
-				for _, vm := range store.vms {
-					if vm.Name == vmName && (resourceGroup == "" || vm.ResourceGroup == resourceGroup) {
-						properties := map[string]interface{}{
-							"vmId":              vm.ID,
-							"provisioningState": vm.ProvisioningState,
-							"hardwareProfile": map[string]interface{}{
-								"vmSize": vm.VMSize,
-							},
-							"storageProfile": map[string]interface{}{
-								"osDisk": map[string]interface{}{
-									"osType": vm.OSType,
-								},
-							},
-						}
-
-						// Include instance view if requested
-						expandParam := r.URL.Query().Get("$expand")
-						if expandParam == "instanceView" {
-							powerStateCode := "PowerState/" + vm.Status
-							if vm.Status == "stopped" {
-								powerStateCode = "PowerState/deallocated"
-							}
-
-							properties["instanceView"] = map[string]interface{}{
-								"statuses": []map[string]interface{}{
-									{
-										"code":          powerStateCode,
-										"level":         "Info",
-										"displayStatus": vm.PowerState,
-									},
-									{
-										"code":          "ProvisioningState/" + vm.ProvisioningState,
-										"level":         "Info",
-										"displayStatus": "Provisioning " + strings.ToLower(vm.ProvisioningState),
-									},
-								},
-							}
-							log.Printf("DEBUG: ARM - Returning single VM %s with instance view (status: %s)", vmName, vm.Status)
-						}
-
-						// Return single VM (not in array)
-						w.Header().Set("Content-Type", "application/json")
-						if err := json.NewEncoder(w).Encode(map[string]interface{}{
-							"id":         vm.ID,
-							"name":       vm.Name,
-							"type":       "Microsoft.Compute/virtualMachines",
-							"location":   vm.Location,
-							"properties": properties,
-							"tags":       vm.Tags,
-						}); err != nil {
-							log.Printf("Failed to encode JSON response: %v", err)
-						}
-						return
-					}
-				}
-
-				// VM not found
-				http.NotFound(w, r)
-				return
-			}
-
-			// Filter VMs by resource group if specified
-			filteredVMs := []map[string]interface{}{}
-			for _, vm := range store.vms {
-				if resourceGroup == "" || vm.ResourceGroup == resourceGroup {
-					// Convert to Azure ARM format with proper nested structure
-					properties := map[string]interface{}{
-						"vmId":              vm.ID,
-						"provisioningState": vm.ProvisioningState,
-						"hardwareProfile": map[string]interface{}{
-							"vmSize": vm.VMSize,
-						},
-						"storageProfile": map[string]interface{}{
-							"osDisk": map[string]interface{}{
-								"osType": vm.OSType,
-							},
-						},
-					}
-
-					// Include instance view if requested via $expand=instanceView
-					expandParam := r.URL.Query().Get("$expand")
-					log.Printf("DEBUG: ARM - Expand parameter: '%s'", expandParam)
-
-					if expandParam == "instanceView" || strings.Contains(r.URL.RawQuery, "expand=instanceView") {
-						log.Printf("DEBUG: ARM - Including instance view for VM: %s (status: %s)", vm.Name, vm.Status)
-
-						// Map status to proper PowerState codes
-						powerStateCode := "PowerState/" + vm.Status
-						if vm.Status == "stopped" {
-							powerStateCode = "PowerState/deallocated"
-						}
-
-						properties["instanceView"] = map[string]interface{}{
-							"statuses": []map[string]interface{}{
-								{
-									"code":          powerStateCode,
-									"level":         "Info",
-									"displayStatus": vm.PowerState,
-								},
-								{
-									"code":          "ProvisioningState/" + vm.ProvisioningState,
-									"level":         "Info",
-									"displayStatus": "Provisioning " + strings.ToLower(vm.ProvisioningState),
-								},
-							},
-						}
-					} else {
-						log.Printf("DEBUG: ARM - NOT including instance view (expand='%s')", expandParam)
-					}
-
-					armVM := map[string]interface{}{
-						"id":         vm.ID,
-						"name":       vm.Name,
-						"type":       "Microsoft.Compute/virtualMachines",
-						"location":   vm.Location,
-						"properties": properties,
-						"tags":       vm.Tags,
-					}
-					filteredVMs = append(filteredVMs, armVM)
-				}
-			}
-
-			// Return in Azure ARM format
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(map[string]interface{}{
-				"value": filteredVMs,
-			}); err != nil {
-				log.Printf("Failed to encode JSON response: %v", err)
-			}
-			return
-		}
-
-		// Not a recognized endpoint
-		http.NotFound(w, r)
-	})
-
-	mux.HandleFunc("/mock/azure/vms", func(w http.ResponseWriter, r *http.Request) {
-		// Try to authenticate as service account
-		serviceAccount, _ := store.authenticateServiceAccount(r)
-
-		switch r.Method {
-		case http.MethodGet:
-			// If authenticated as service account, filter VMs based on permissions
-			if serviceAccount != nil {
-				filteredVMs := []*MockVM{}
-				for _, vm := range store.vms {
-					if serviceAccount.hasPermission(vm.ResourceGroup, "read") {
-						filteredVMs = append(filteredVMs, vm)
-					}
-				}
-				w.Header().Set("Content-Type", "application/json")
-				if err := json.NewEncoder(w).Encode(map[string]interface{}{"value": filteredVMs, "count": len(filteredVMs)}); err != nil {
-					log.Printf("Failed to encode JSON response: %v", err)
-				}
-				return
-			}
-
-			// No authentication or regular user - return all VMs
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(map[string]interface{}{"value": store.vms, "count": len(store.vms)}); err != nil {
-				log.Printf("Failed to encode JSON response: %v", err)
-			}
-		case http.MethodPost:
-			var vm MockVM
-			if err := json.NewDecoder(r.Body).Decode(&vm); err != nil {
-				http.Error(w, "Invalid JSON", http.StatusBadRequest)
-				return
-			}
-			if vm.Tags == nil {
-				vm.Tags = map[string]string{}
-			}
-			if vm.PowerState == "" {
-				vm.PowerState = "VM deallocated"
-			}
-			if vm.Status == "" {
-				vm.Status = "stopped"
-			}
-			vm.LastUpdated = time.Now()
-			store.vms = append(store.vms, &vm)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusCreated)
-			if err := json.NewEncoder(w).Encode(vm); err != nil {
-				log.Printf("Failed to encode JSON response: %v", err)
-			}
-		default:
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	})
-
-	mux.HandleFunc("/mock/azure/vms/", func(w http.ResponseWriter, r *http.Request) {
-		path := strings.TrimPrefix(r.URL.Path, "/mock/azure/vms/")
-		parts := strings.Split(path, "/")
-		if len(parts) == 0 || parts[0] == "" {
-			http.Error(w, "VM name required", http.StatusBadRequest)
-			return
-		}
-		vmName := parts[0]
-
-		// Try to authenticate as service account
-		serviceAccount, _ := store.authenticateServiceAccount(r)
-
-		// Helper to find VM
-		find := func(name string) *MockVM {
-			for _, v := range store.vms {
-				if v.Name == name {
-					return v
-				}
-			}
-			return nil
-		}
-
-		// Helper to check permission
-		checkPermission := func(vm *MockVM, permission string) bool {
-			if serviceAccount == nil {
-				return true // No auth required for non-service accounts (backward compat)
-			}
-			return serviceAccount.hasPermission(vm.ResourceGroup, permission)
-		}
-
-		switch r.Method {
-		case http.MethodGet:
-			vm := find(vmName)
-			if vm == nil {
-				http.Error(w, "VM not found", http.StatusNotFound)
-				return
-			}
-
-			// Check read permission
-			if !checkPermission(vm, "read") {
-				http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
-				return
-			}
-
-			if len(parts) > 1 && parts[1] == "status" {
-				w.Header().Set("Content-Type", "application/json")
-				if err := json.NewEncoder(w).Encode(map[string]interface{}{
-					"status":      vm.Status,
-					"powerState":  vm.PowerState,
-					"lastUpdated": vm.LastUpdated,
-				}); err != nil {
-					log.Printf("Failed to encode JSON response: %v", err)
-				}
-				return
-			}
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(vm); err != nil {
-				log.Printf("Failed to encode JSON response: %v", err)
-			}
-		case http.MethodPost:
-			if len(parts) < 2 {
-				http.Error(w, "Operation required", http.StatusBadRequest)
-				return
-			}
-			vm := find(vmName)
-			if vm == nil {
-				http.Error(w, "VM not found", http.StatusNotFound)
-				return
-			}
-			switch parts[1] {
-			case "start":
-				// Check start permission
-				if !checkPermission(vm, "start") {
-					http.Error(w, "Forbidden: insufficient permissions to start VM", http.StatusForbidden)
-					return
-				}
-				vm.Status = "running"
-				vm.PowerState = "VM running"
-				vm.LastUpdated = time.Now()
-				w.Header().Set("Content-Type", "application/json")
-				if err := json.NewEncoder(w).Encode(map[string]interface{}{"message": fmt.Sprintf("VM %s started successfully", vmName), "status": "success"}); err != nil {
-					log.Printf("Failed to encode JSON response: %v", err)
-				}
-			case "stop":
-				// Check stop permission
-				if !checkPermission(vm, "stop") {
-					http.Error(w, "Forbidden: insufficient permissions to stop VM", http.StatusForbidden)
-					return
-				}
-				vm.Status = "stopped"
-				vm.PowerState = "VM deallocated"
-				vm.LastUpdated = time.Now()
-				w.Header().Set("Content-Type", "application/json")
-				if err := json.NewEncoder(w).Encode(map[string]interface{}{"message": fmt.Sprintf("VM %s stopped successfully", vmName), "status": "success"}); err != nil {
-					log.Printf("Failed to encode JSON response: %v", err)
-				}
-			case "restart":
-				// Check restart permission
-				if !checkPermission(vm, "restart") {
-					http.Error(w, "Forbidden: insufficient permissions to restart VM", http.StatusForbidden)
-					return
-				}
-				vm.Status = "running"
-				vm.PowerState = "VM running"
-				vm.LastUpdated = time.Now()
-				w.Header().Set("Content-Type", "application/json")
-				if err := json.NewEncoder(w).Encode(map[string]interface{}{"message": fmt.Sprintf("VM %s restarted successfully", vmName), "status": "success"}); err != nil {
-					log.Printf("Failed to encode JSON response: %v", err)
-				}
-			case "tags":
-				var tags map[string]*string
-				if err := json.NewDecoder(r.Body).Decode(&tags); err != nil {
-					http.Error(w, "Invalid JSON", http.StatusBadRequest)
-					return
-				}
-				vm.Tags = map[string]string{}
-				for k, v := range tags {
-					if v != nil {
-						vm.Tags[k] = *v
-					}
-				}
-				vm.LastUpdated = time.Now()
-				w.Header().Set("Content-Type", "application/json")
-				if err := json.NewEncoder(w).Encode(map[string]interface{}{"message": fmt.Sprintf("Tags updated for VM %s", vmName), "status": "success"}); err != nil {
-					log.Printf("Failed to encode JSON response: %v", err)
-				}
-			default:
-				http.Error(w, "Unknown operation", http.StatusBadRequest)
-			}
-		case http.MethodPut:
-			if len(parts) > 1 && parts[1] == "tags" {
-				vm := find(vmName)
-				if vm == nil {
-					http.Error(w, "VM not found", http.StatusNotFound)
-					return
-				}
-				var tags map[string]*string
-				if err := json.NewDecoder(r.Body).Decode(&tags); err != nil {
-					http.Error(w, "Invalid JSON", http.StatusBadRequest)
-					return
-				}
-				vm.Tags = map[string]string{}
-				for k, v := range tags {
-					if v != nil {
-						vm.Tags[k] = *v
-					}
-				}
-				vm.LastUpdated = time.Now()
-				w.Header().Set("Content-Type", "application/json")
-				if err := json.NewEncoder(w).Encode(map[string]interface{}{"message": fmt.Sprintf("Tags updated for VM %s", vmName), "status": "success"}); err != nil {
-					log.Printf("Failed to encode JSON response: %v", err)
-				}
-			} else {
-				http.Error(w, "Operation required", http.StatusBadRequest)
-			}
-		default:
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	})
-
-	// Users - requires User.Read.All permission
-	mux.HandleFunc("/mock/azure/users", func(w http.ResponseWriter, r *http.Request) {
-		// Check service account authentication and Graph API permissions
-		serviceAccount, err := store.authenticateServiceAccount(r)
-		if err != nil || serviceAccount == nil {
-			http.Error(w, `{"error":"unauthorized","error_description":"Authentication required to access Microsoft Graph API"}`, http.StatusUnauthorized)
-			return
-		}
-
-		// Check if service account has User.Read.All permission
-		hasPermission := false
-		for _, perm := range serviceAccount.GraphPermissions {
-			if perm == "User.Read.All" || perm == "Directory.Read.All" {
-				hasPermission = true
-				break
-			}
-		}
-
-		if !hasPermission {
-			http.Error(w, `{"error":"forbidden","error_description":"Insufficient privileges to access user directory. Requires User.Read.All or Directory.Read.All permission"}`, http.StatusForbidden)
-			return
-		}
-
-		switch r.Method {
-		case http.MethodGet:
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(map[string]interface{}{"value": store.users, "count": len(store.users)}); err != nil {
-				log.Printf("Failed to encode JSON response: %v", err)
-			}
-		case http.MethodPost:
-			var user MockUser
-			if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-				http.Error(w, "Invalid JSON", http.StatusBadRequest)
-				return
-			}
-			if user.UserType == "" {
-				user.UserType = "Member"
-			}
-			if user.Roles == nil {
-				user.Roles = []string{"User"}
-			}
-			store.users = append(store.users, &user)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusCreated)
-			if err := json.NewEncoder(w).Encode(user); err != nil {
-				log.Printf("Failed to encode JSON response: %v", err)
-			}
-		default:
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	})
-
-	mux.HandleFunc("/mock/azure/users/", func(w http.ResponseWriter, r *http.Request) {
-		path := strings.TrimPrefix(r.URL.Path, "/mock/azure/users/")
-		parts := strings.Split(path, "/")
-		if len(parts) == 0 || parts[0] == "" {
-			http.Error(w, "User ID required", http.StatusBadRequest)
-			return
-		}
-		userID := parts[0]
-
-		switch r.Method {
-		case http.MethodGet:
-			for _, u := range store.users {
-				if u.ID == userID {
-					w.Header().Set("Content-Type", "application/json")
-					if err := json.NewEncoder(w).Encode(u); err != nil {
-						log.Printf("Failed to encode JSON response: %v", err)
-					}
-					return
-				}
-			}
-			http.Error(w, "User not found", http.StatusNotFound)
-		default:
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	})
-
-	// Entra ID
 	// Legacy alias authorize
 	mux.HandleFunc("/mock/azure/entra/authorize", func(w http.ResponseWriter, r *http.Request) {
 		r.URL.Path = "/oauth2/v2.0/authorize"
@@ -1872,7 +1420,7 @@ func main() {
 		mux.ServeHTTP(w, r)
 	})
 
-	// OIDC userinfo
+	// OIDC userinfo endpoint (mock-specific implementation)
 	mux.HandleFunc("/oidc/userinfo", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
