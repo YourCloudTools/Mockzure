@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/yourcloudtools/mockzure/internal/mappers"
 	"github.com/yourcloudtools/mockzure/internal/routes"
 	"github.com/yourcloudtools/mockzure/internal/specs"
 	yaml "gopkg.in/yaml.v3"
@@ -1546,6 +1547,88 @@ func main() {
 		store.init()
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(map[string]interface{}{"message": "Mock data reset to defaults successfully", "status": "success"}); err != nil {
+			log.Printf("Failed to encode JSON response: %v", err)
+		}
+	})
+
+	// Convenience API endpoints for client applications
+	// POST /api/users/sync - Sync/fetch users from Azure (Graph API)
+	mux.HandleFunc("/api/users/sync", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		// Call Graph API mapper to get users
+		response, err := mappers.MapGraphResponse("users.list", "/v1.0/users", "GET", map[string]string{}, store)
+		if err != nil {
+			log.Printf("Error fetching users: %v", err)
+			http.Error(w, fmt.Sprintf("Failed to fetch users from Azure: %v", err), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			log.Printf("Failed to encode JSON response: %v", err)
+		}
+	})
+
+	// POST /api/vms/discover - Discover VMs from Azure (ARM API)
+	mux.HandleFunc("/api/vms/discover", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		// Parse request body to get subscription ID and resource group (optional)
+		var reqBody map[string]interface{}
+		if r.Body != nil && r.ContentLength > 0 {
+			if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+				// If body is empty or invalid JSON, use empty map
+				reqBody = make(map[string]interface{})
+			}
+		} else {
+			reqBody = make(map[string]interface{})
+		}
+
+		// Extract subscription ID and resource group from request or use defaults
+		subscriptionID := "12345678-1234-1234-1234-123456789012" // Default subscription ID
+		resourceGroup := ""
+		if subID, ok := reqBody["subscriptionId"].(string); ok && subID != "" {
+			subscriptionID = subID
+		}
+		if rg, ok := reqBody["resourceGroup"].(string); ok && rg != "" {
+			resourceGroup = rg
+		}
+
+		// Build params for ARM API call
+		params := map[string]string{
+			"subscriptionId": subscriptionID,
+		}
+		if resourceGroup != "" {
+			params["resourceGroupName"] = resourceGroup
+		}
+
+		// Call ARM API mapper to get VMs
+		// Try the resource group specific endpoint first if resource group is provided
+		var response interface{}
+		var err error
+
+		if resourceGroup != "" {
+			// Try listing VMs in a specific resource group
+			pathPattern := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Compute/virtualMachines"
+			response, err = mappers.MapARMResponse("VirtualMachines_List", pathPattern, "GET", params, store)
+		} else {
+			// List all VMs across all resource groups
+			pathPattern := "/subscriptions/{subscriptionId}/providers/Microsoft.Compute/virtualMachines"
+			response, err = mappers.MapARMResponse("VirtualMachines_ListAll", pathPattern, "GET", params, store)
+		}
+
+		if err != nil {
+			log.Printf("Error discovering VMs: %v", err)
+			http.Error(w, fmt.Sprintf("Failed to discover VMs: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(response); err != nil {
 			log.Printf("Failed to encode JSON response: %v", err)
 		}
 	})
