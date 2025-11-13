@@ -1231,7 +1231,18 @@ func main() {
 	var showHelp = flag.Bool("help", false, "Show help information")
 	var showVersion = flag.Bool("version", false, "Show version information")
 	var configPathFlag = flag.String("config", "", "Path to config file (json|yaml). Can also use MOCKZURE_CONFIG env var")
+	var debugFlag = flag.Bool("debug", false, "Enable extensive debug logging for all requests")
 	flag.Parse()
+
+	// Check for debug mode via flag or environment variable
+	debugMode := *debugFlag
+	if !debugMode {
+		debugEnv := os.Getenv("MOCKZURE_DEBUG")
+		debugMode = debugEnv == "true" || debugEnv == "1" || debugEnv == "yes"
+	}
+	if debugMode {
+		log.Printf("Debug mode enabled - all requests will be logged")
+	}
 
 	// Handle help flag
 	if *showHelp {
@@ -1242,6 +1253,7 @@ func main() {
 		fmt.Println("")
 		fmt.Println("Options:")
 		fmt.Println("  --config   Path to config file (or set MOCKZURE_CONFIG)")
+		fmt.Println("  --debug    Enable extensive debug logging (or set MOCKZURE_DEBUG=true)")
 		fmt.Println("  --help     Show this help message")
 		fmt.Println("  --version  Show version information")
 		fmt.Println("")
@@ -1883,11 +1895,17 @@ func main() {
 		}
 	})
 
+	// Apply debug middleware if enabled
+	var handler http.Handler = mux
+	if debugMode {
+		handler = routes.DebugMiddleware(mux)
+	}
+
 	addr := ":8090"
 	log.Printf("Starting Mockzure on %s", addr)
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           mux,
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
