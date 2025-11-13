@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -206,9 +207,18 @@ func (s *Store) GetVMs() []interface{} {
 
 // GetUsers returns users as interface slice for mappers
 func (s *Store) GetUsers() []interface{} {
-	result := make([]interface{}, len(s.users))
-	for i, user := range s.users {
-		result[i] = map[string]interface{}{
+	if s == nil {
+		return []interface{}{}
+	}
+	if s.users == nil {
+		return []interface{}{}
+	}
+	result := make([]interface{}, 0, len(s.users))
+	for _, user := range s.users {
+		if user == nil {
+			continue // Skip nil users
+		}
+		result = append(result, map[string]interface{}{
 			"id":                user.ID,
 			"displayName":       user.DisplayName,
 			"userPrincipalName": user.UserPrincipalName,
@@ -219,7 +229,7 @@ func (s *Store) GetUsers() []interface{} {
 			"userType":          user.UserType,
 			"accountEnabled":    user.AccountEnabled,
 			"roles":             user.Roles,
-		}
+		})
 	}
 	return result
 }
@@ -1011,6 +1021,211 @@ func renderUserSelectionPage(w http.ResponseWriter, r *http.Request, clientID, r
 	}
 }
 
+// registerFallbackVMRoutes registers essential VM routes manually as a fallback
+// when arm-compute.json is empty or missing
+func registerFallbackVMRoutes(mux *http.ServeMux, store *Store) {
+	// Register VM list routes using the route matching system
+	// These routes are essential for VM discovery to work
+
+	// List VMs in a resource group
+	mux.HandleFunc("/subscriptions/", func(w http.ResponseWriter, r *http.Request) {
+		// Only handle GET requests for VM list endpoints
+		if r.Method != http.MethodGet {
+			http.NotFound(w, r)
+			return
+		}
+
+		path := r.URL.Path
+
+		// Match: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Compute/virtualMachines
+		rgPattern := regexp.MustCompile(`^/subscriptions/([^/]+)/resourceGroups/([^/]+)/providers/Microsoft.Compute/virtualMachines/?$`)
+		if matches := rgPattern.FindStringSubmatch(path); matches != nil {
+			params := map[string]string{
+				"subscriptionId":    matches[1],
+				"resourceGroupName": matches[2],
+			}
+			// Call ARM mapper directly
+			response, err := mappers.MapARMResponse("VirtualMachines_List", "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Compute/virtualMachines", "GET", params, store)
+			if err != nil {
+				log.Printf("Error mapping ARM response: %v", err)
+				errorResponse := map[string]interface{}{
+					"error": map[string]interface{}{
+						"code":    "ResourceNotFound",
+						"message": err.Error(),
+					},
+				}
+				w.Header().Set("Content-Type", "application/json")
+				if strings.Contains(err.Error(), "not found") {
+					w.WriteHeader(http.StatusNotFound)
+				} else {
+					w.WriteHeader(http.StatusInternalServerError)
+				}
+				json.NewEncoder(w).Encode(errorResponse)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
+		// Match: /subscriptions/{subscriptionId}/providers/Microsoft.Compute/virtualMachines
+		allPattern := regexp.MustCompile(`^/subscriptions/([^/]+)/providers/Microsoft.Compute/virtualMachines/?$`)
+		if matches := allPattern.FindStringSubmatch(path); matches != nil {
+			params := map[string]string{
+				"subscriptionId": matches[1],
+			}
+			// Call ARM mapper directly
+			response, err := mappers.MapARMResponse("VirtualMachines_ListAll", "/subscriptions/{subscriptionId}/providers/Microsoft.Compute/virtualMachines", "GET", params, store)
+			if err != nil {
+				log.Printf("Error mapping ARM response: %v", err)
+				errorResponse := map[string]interface{}{
+					"error": map[string]interface{}{
+						"code":    "ResourceNotFound",
+						"message": err.Error(),
+					},
+				}
+				w.Header().Set("Content-Type", "application/json")
+				if strings.Contains(err.Error(), "not found") {
+					w.WriteHeader(http.StatusNotFound)
+				} else {
+					w.WriteHeader(http.StatusInternalServerError)
+				}
+				json.NewEncoder(w).Encode(errorResponse)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
+		// Match: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Compute/virtualMachines/{vmName}
+		vmPattern := regexp.MustCompile(`^/subscriptions/([^/]+)/resourceGroups/([^/]+)/providers/Microsoft.Compute/virtualMachines/([^/]+)/?$`)
+		if matches := vmPattern.FindStringSubmatch(path); matches != nil {
+			params := map[string]string{
+				"subscriptionId":    matches[1],
+				"resourceGroupName": matches[2],
+				"vmName":            matches[3],
+			}
+			// Call ARM mapper directly
+			response, err := mappers.MapARMResponse("VirtualMachines_Get", "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Compute/virtualMachines/{vmName}", "GET", params, store)
+			if err != nil {
+				log.Printf("Error mapping ARM response: %v", err)
+				errorResponse := map[string]interface{}{
+					"error": map[string]interface{}{
+						"code":    "ResourceNotFound",
+						"message": err.Error(),
+					},
+				}
+				w.Header().Set("Content-Type", "application/json")
+				if strings.Contains(err.Error(), "not found") {
+					w.WriteHeader(http.StatusNotFound)
+				} else {
+					w.WriteHeader(http.StatusInternalServerError)
+				}
+				json.NewEncoder(w).Encode(errorResponse)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
+		// No match - let other handlers try (don't return 404 here, let the spec-driven routes handle it)
+	})
+}
+
+// registerFallbackGraphRoutes registers essential Graph API routes manually as a fallback
+// when graph specs are empty or missing
+func registerFallbackGraphRoutes(mux *http.ServeMux, store *Store) {
+	// Register Graph API users list route
+	mux.HandleFunc("/v1.0/users", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Extract query parameters
+		params := make(map[string]string)
+		for k, v := range r.URL.Query() {
+			if len(v) > 0 {
+				params[k] = v[0]
+			}
+		}
+
+		// Call Graph mapper directly
+		response, err := mappers.MapGraphResponse("users.list", "/v1.0/users", "GET", params, store)
+		if err != nil {
+			log.Printf("Error mapping Graph response: %v", err)
+			errorResponse := map[string]interface{}{
+				"error": map[string]interface{}{
+					"code":    "ItemNotFound",
+					"message": err.Error(),
+				},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			if strings.Contains(err.Error(), "not found") {
+				w.WriteHeader(http.StatusNotFound)
+			} else {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+			json.NewEncoder(w).Encode(errorResponse)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	})
+
+	// Register Graph API user by ID route
+	mux.HandleFunc("/v1.0/users/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		path := r.URL.Path
+		// Match: /v1.0/users/{user-id}
+		userPattern := regexp.MustCompile(`^/v1\.0/users/([^/]+)/?$`)
+		if matches := userPattern.FindStringSubmatch(path); matches != nil {
+			params := map[string]string{
+				"user-id": matches[1],
+			}
+
+			// Extract query parameters
+			for k, v := range r.URL.Query() {
+				if len(v) > 0 {
+					params[k] = v[0]
+				}
+			}
+
+			// Call Graph mapper directly
+			response, err := mappers.MapGraphResponse("users.get", "/v1.0/users/{user-id}", "GET", params, store)
+			if err != nil {
+				log.Printf("Error mapping Graph response: %v", err)
+				errorResponse := map[string]interface{}{
+					"error": map[string]interface{}{
+						"code":    "ItemNotFound",
+						"message": err.Error(),
+					},
+				}
+				w.Header().Set("Content-Type", "application/json")
+				if strings.Contains(err.Error(), "not found") {
+					w.WriteHeader(http.StatusNotFound)
+				} else {
+					w.WriteHeader(http.StatusInternalServerError)
+				}
+				json.NewEncoder(w).Encode(errorResponse)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
+		// No match - let other handlers try
+		http.NotFound(w, r)
+	})
+}
+
 func main() {
 	// Parse command line flags
 	var showHelp = flag.Bool("help", false, "Show help information")
@@ -1111,6 +1326,14 @@ func main() {
 			}
 		}
 	}
+
+	// Register fallback VM routes if arm-compute.json is empty or missing
+	// These routes are essential for VM discovery to work
+	registerFallbackVMRoutes(mux, store)
+
+	// Register fallback Graph API routes if graph specs are empty or missing
+	// These routes are essential for user sync to work
+	registerFallbackGraphRoutes(mux, store)
 
 	// OIDC Discovery endpoints
 	// Note: These are kept as hardcoded handlers because they require custom mock logic
@@ -1554,21 +1777,48 @@ func main() {
 	// Convenience API endpoints for client applications
 	// POST /api/users/sync - Sync/fetch users from Azure (Graph API)
 	mux.HandleFunc("/api/users/sync", func(w http.ResponseWriter, r *http.Request) {
+		// Add panic recovery
+		defer func() {
+			if rec := recover(); rec != nil {
+				log.Printf("Panic in /api/users/sync: %v", rec)
+				http.Error(w, fmt.Sprintf("Internal server error: %v", rec), http.StatusInternalServerError)
+			}
+		}()
+
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
+
+		if store == nil {
+			log.Printf("Error: store is nil in /api/users/sync handler")
+			http.Error(w, "Failed to fetch users from Azure: store is not initialized", http.StatusInternalServerError)
+			return
+		}
+
+		log.Printf("POST /api/users/sync: calling MapGraphResponse")
+
 		// Call Graph API mapper to get users
 		response, err := mappers.MapGraphResponse("users.list", "/v1.0/users", "GET", map[string]string{}, store)
 		if err != nil {
-			log.Printf("Error fetching users: %v", err)
+			log.Printf("Error fetching users from MapGraphResponse: %v", err)
 			http.Error(w, fmt.Sprintf("Failed to fetch users from Azure: %v", err), http.StatusInternalServerError)
 			return
 		}
+
+		if response == nil {
+			log.Printf("Warning: MapGraphResponse returned nil response")
+			response = map[string]interface{}{"value": []interface{}{}}
+		}
+
+		log.Printf("POST /api/users/sync: successfully fetched users, encoding response")
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			log.Printf("Failed to encode JSON response: %v", err)
+			http.Error(w, fmt.Sprintf("Failed to encode response: %v", err), http.StatusInternalServerError)
+			return
 		}
+		log.Printf("POST /api/users/sync: response sent successfully")
 	})
 
 	// POST /api/vms/discover - Discover VMs from Azure (ARM API)

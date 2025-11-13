@@ -2,11 +2,16 @@ package mappers
 
 import (
 	"fmt"
+	"log"
 	"strings"
 )
 
 // MapGraphResponse maps store data to Microsoft Graph API response format
 func MapGraphResponse(operationID, pathPattern, method string, params map[string]string, store StoreInterface) (interface{}, error) {
+	if store == nil {
+		return nil, fmt.Errorf("store is nil")
+	}
+
 	pathLower := strings.ToLower(pathPattern)
 
 	// Users operations
@@ -25,7 +30,18 @@ func MapGraphResponse(operationID, pathPattern, method string, params map[string
 
 // mapUsersResponse handles Microsoft Graph users operations
 func mapUsersResponse(operationID, method string, params map[string]string, store StoreInterface) (interface{}, error) {
+	if store == nil {
+		return nil, fmt.Errorf("store is nil in mapUsersResponse")
+	}
+
 	users := store.GetUsers()
+	if users == nil {
+		log.Printf("Warning: GetUsers() returned nil, using empty slice")
+		users = []interface{}{} // Ensure users is never nil
+	}
+
+	log.Printf("mapUsersResponse: processing %d users", len(users))
+
 	// Graph API uses {user-id} as parameter name in specs
 	userID := params["user-id"]
 	if userID == "" {
@@ -52,11 +68,27 @@ func mapUsersResponse(operationID, method string, params map[string]string, stor
 
 		// List users with pagination support
 		graphUsers := []interface{}{}
-		for _, user := range users {
-			if userMap, ok := user.(map[string]interface{}); ok {
-				graphUsers = append(graphUsers, convertUserToGraphFormat(userMap))
+		for i, user := range users {
+			if user == nil {
+				log.Printf("Warning: user at index %d is nil, skipping", i)
+				continue
+			}
+			userMap, ok := user.(map[string]interface{})
+			if !ok {
+				log.Printf("Warning: user at index %d is not a map[string]interface{}, got %T, skipping", i, user)
+				continue
+			}
+			if userMap == nil {
+				log.Printf("Warning: user map at index %d is nil, skipping", i)
+				continue
+			}
+			converted := convertUserToGraphFormat(userMap)
+			if converted != nil {
+				graphUsers = append(graphUsers, converted)
 			}
 		}
+
+		log.Printf("mapUsersResponse: converted %d users to Graph format", len(graphUsers))
 
 		response := map[string]interface{}{
 			"value": graphUsers,
@@ -69,10 +101,10 @@ func mapUsersResponse(operationID, method string, params map[string]string, stor
 			// Limit results (simplified - would need proper parsing)
 			// For now, return all
 		}
-		
+
 		// Add @odata.context for Graph API compliance
 		response["@odata.context"] = "https://graph.microsoft.com/v1.0/$metadata#users"
-		
+
 		// Add @odata.nextLink if there are more results (simplified)
 		// In a real implementation, this would be based on $top and $skip
 		if len(allUsers) > 0 {
@@ -98,16 +130,40 @@ func mapUsersResponse(operationID, method string, params map[string]string, stor
 
 // convertUserToGraphFormat converts a user from internal format to Graph API format
 func convertUserToGraphFormat(user map[string]interface{}) map[string]interface{} {
-	graphUser := map[string]interface{}{
-		"id":                user["id"],
-		"displayName":      user["displayName"],
-		"userPrincipalName": user["userPrincipalName"],
-		"mail":             user["mail"],
-		"jobTitle":         user["jobTitle"],
-		"department":       user["department"],
-		"officeLocation":   user["officeLocation"],
-		"userType":         user["userType"],
-		"accountEnabled":   user["accountEnabled"],
+	if user == nil {
+		log.Printf("Warning: convertUserToGraphFormat called with nil user map")
+		return map[string]interface{}{}
+	}
+
+	graphUser := make(map[string]interface{})
+
+	// Safely extract fields, handling nil values
+	if id, ok := user["id"]; ok {
+		graphUser["id"] = id
+	}
+	if displayName, ok := user["displayName"]; ok {
+		graphUser["displayName"] = displayName
+	}
+	if userPrincipalName, ok := user["userPrincipalName"]; ok {
+		graphUser["userPrincipalName"] = userPrincipalName
+	}
+	if mail, ok := user["mail"]; ok {
+		graphUser["mail"] = mail
+	}
+	if jobTitle, ok := user["jobTitle"]; ok {
+		graphUser["jobTitle"] = jobTitle
+	}
+	if department, ok := user["department"]; ok {
+		graphUser["department"] = department
+	}
+	if officeLocation, ok := user["officeLocation"]; ok {
+		graphUser["officeLocation"] = officeLocation
+	}
+	if userType, ok := user["userType"]; ok {
+		graphUser["userType"] = userType
+	}
+	if accountEnabled, ok := user["accountEnabled"]; ok {
+		graphUser["accountEnabled"] = accountEnabled
 	}
 
 	// Add @odata.context if needed
@@ -162,12 +218,11 @@ func mapServicePrincipalsResponse(operationID, method string, params map[string]
 // convertServiceAccountToGraphFormat converts a service account to Graph API format
 func convertServiceAccountToGraphFormat(sa map[string]interface{}) map[string]interface{} {
 	return map[string]interface{}{
-		"id":               sa["id"],
-		"appId":            sa["applicationId"],
-		"displayName":      sa["displayName"],
-		"description":      sa["description"],
-		"accountEnabled":   sa["accountEnabled"],
+		"id":                   sa["id"],
+		"appId":                sa["applicationId"],
+		"displayName":          sa["displayName"],
+		"description":          sa["description"],
+		"accountEnabled":       sa["accountEnabled"],
 		"servicePrincipalType": "Application",
 	}
 }
-

@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   mockzure:
+    image: ghcr.io/yourcloudtools/mockzure:local
     # Build locally for ARM64 support (works immediately)
     # After the next CI build, multi-platform images (AMD64 + ARM64) will be available
     # in the registry. You can then switch to using the registry image by commenting
